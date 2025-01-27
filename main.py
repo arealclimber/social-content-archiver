@@ -14,6 +14,9 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from PIL import Image
 
+
+TOGGLE_FOR_INVERT_IMAGE_ORDER = False
+
 def sanitize_filename(filename):
     invalid_chars = '<>:"/\\|?*'
     for char in invalid_chars:
@@ -224,18 +227,39 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
     c = canvas.Canvas(output_path, pagesize=A4)
     width, height = A4
     
-    # 第一頁：標題和資訊
+    # 第一頁：合併標題、資訊和內容
     textobject = c.beginText()
     textobject.setTextOrigin(50, height - 50)
-    textobject.setFont('STSong-Light', 16)
     
+    # 標題
+    textobject.setFont('STSong-Light', 16)
     textobject.textLine(title)
     textobject.moveCursor(0, 20)
     
+    # 資訊
     textobject.setFont('STSong-Light', 12)
     
-    textobject.textLine(f"網址：{url}")
-    textobject.moveCursor(0, 10)
+    # 處理長 URL
+    def wrap_url(url, max_width):
+        parts = []
+        current_part = ""
+        for char in url:
+            test_part = current_part + char
+            if c.stringWidth(test_part, 'STSong-Light', 12) < max_width:
+                current_part = test_part
+            else:
+                parts.append(current_part)
+                current_part = char
+        if current_part:
+            parts.append(current_part)
+        return parts
+    
+    textobject.textLine("網址：")
+    url_parts = wrap_url(url, width - 100)  # 100 是左右邊距的總和
+    for part in url_parts:
+        textobject.moveCursor(40, 0)  # 縮進
+        textobject.textLine(part)
+    textobject.moveCursor(-40, 10)  # 取消縮進並添加間距
     
     if author:
         textobject.textLine(f"作者：{author}")
@@ -243,34 +267,36 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
     
     if edit_date:
         textobject.textLine(f"編輯日期：{edit_date}")
-        textobject.moveCursor(0, 10)
+        textobject.moveCursor(0, 20)
     
-    c.drawText(textobject)
-    c.showPage()
-    
-    # 第二頁：內容
-    textobject = c.beginText()
-    textobject.setTextOrigin(50, height - 50)
-    textobject.setFont('STSong-Light', 12)
-    
-    # 改進文本分行處理
-    def split_text_to_lines(text, max_chars=40):
+    # 內容
+    def split_text_to_lines(text, font_name, font_size, max_width):
         lines = []
         current_line = ""
         
         for char in text:
-            current_line += char
-            if len(current_line) >= max_chars:
+            test_line = current_line + char
+            if c.stringWidth(test_line, font_name, font_size) < max_width:
+                current_line = test_line
+            else:
                 lines.append(current_line)
-                current_line = ""
+                current_line = char
         
         if current_line:
             lines.append(current_line)
         
         return lines
     
-    lines = split_text_to_lines(text)
+    # 正文內容
+    lines = split_text_to_lines(text, 'STSong-Light', 12, width - 100)
     for line in lines:
+        # 檢查是否需要新頁
+        if textobject.getY() < 50:  # 如果剩餘空間不足
+            c.drawText(textobject)
+            c.showPage()
+            textobject = c.beginText()
+            textobject.setTextOrigin(50, height - 50)
+            textobject.setFont('STSong-Light', 12)
         textobject.textLine(line)
     
     c.drawText(textobject)
@@ -278,12 +304,12 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
     
     # 圖片頁面
     valid_images = [img for img in image_info if img['size_kb'] > 1]
-    TOGGLE_FOR_INVERT_IMAGE_ORDER = False
     
     if valid_images:
-        if TOGGLE_FOR_INVERT_IMAGE_ORDER:
-            first_image = valid_images.pop(0)
-            valid_images.append(first_image)
+        if TOGGLE_FOR_INVERT_IMAGE_ORDER and len(valid_images) > 1:
+            # 將第一張圖片移到最後
+            first_image = valid_images.pop(0)  # 取出第一張圖片
+            valid_images.append(first_image)   # 將其加到最後
         
         for img_info in valid_images:
             try:
@@ -311,7 +337,7 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
             except Exception as e:
                 print(f"處理圖片時發生錯誤 {img_path}: {e}")
     else:
-        print("沒有找到大於40KB的圖片")
+        print("沒有找到大於1KB的圖片")
     
     c.save()
     print(f"PDF已生成：{output_path}")
@@ -344,7 +370,7 @@ def process_url(url):
     return pdf_path
 
 def main():
-    with open('spec.md', 'r', encoding='utf-8') as f:
+    with open('normal-url-to-be-crawled.md', 'r', encoding='utf-8') as f:
         content = f.read()
     
     urls = []
