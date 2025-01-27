@@ -74,8 +74,8 @@ def parse_content(html):
     with open('debug.html', 'w', encoding='utf-8') as f:
         f.write(html)
     
-    # 嘗試不同的選擇器來找到內容
     text = ""
+    images = []
     
     # 嘗試找到標題
     title_selectors = ['.title', 'h1', '.content h1', '.note-content h1']
@@ -85,41 +85,66 @@ def parse_content(html):
             text += title.get_text(strip=True) + "\n\n"
             break
     
-    # 嘗試找到主要內容
-    content_selectors = ['.content', '.note-content', 'article', '.desc']
+    # 嘗試找到主要內容區域
+    content_selectors = [
+        'div[class*="note-content"]',
+        'div[class*="content"]',
+        'article',
+        '.content',
+        '.note-content',
+        '.desc'
+    ]
+    
+    main_content = None
     for selector in content_selectors:
-        content = soup.select_one(selector)
-        if content:
-            text += content.get_text(strip=True) + "\n"
+        main_content = soup.select_one(selector)
+        if main_content:
+            # 提取文字內容
+            text += main_content.get_text(strip=True) + "\n"
+            
+            # 按順序提取圖片
+            for img in main_content.find_all('img', recursive=True):
+                src = img.get('data-src') or img.get('src')
+                if src:
+                    if src.startswith('//'):
+                        src = 'https:' + src
+                    elif not src.startswith('http'):
+                        src = 'https://' + src.lstrip('/')
+                    if src not in images:  # 避免重複
+                        images.append(src)
             break
     
     if not text:
         text = "無法提取內容"
     
-    # 嘗試不同的方式找圖片
-    images = []
-    img_selectors = [
-        'img.note-image', 
-        'img[data-src]', 
-        'img[src*="xhscdn"]',
-        '.note-content img',
-        '.content img',
-        'article img'
-    ]
+    # 如果在主要內容區域沒有找到圖片，使用備用方法
+    if not images:
+        img_selectors = [
+            'img.note-image', 
+            'img[data-src]', 
+            'img[src*="xhscdn"]',
+            '.note-content img',
+            '.content img',
+            'article img'
+        ]
+        
+        for selector in img_selectors:
+            found_images = soup.select(selector)
+            for img in found_images:
+                src = img.get('data-src') or img.get('src')
+                if src:
+                    if src.startswith('//'):
+                        src = 'https:' + src
+                    elif not src.startswith('http'):
+                        src = 'https://' + src.lstrip('/')
+                    if src not in images:  # 避免重複
+                        images.append(src)
     
-    for img_selector in img_selectors:
-        images.extend(soup.select(img_selector))
+    print(f"找到 {len(images)} 張圖片，順序如下：")
+    for idx, img_url in enumerate(images, 1):
+        print(f"圖片 {idx}: {img_url}")
     
-    image_urls = []
-    for img in images:
-        src = img.get('data-src') or img.get('src')
-        if src and (src.startswith('http') or src.startswith('//')):
-            if src.startswith('//'):
-                src = 'https:' + src
-            if src not in image_urls:  # 避免重複
-                image_urls.append(src)
-    
-    return text, image_urls
+    return text, images
 
 def download_images(image_urls, note_id, folder='images'):
     note_folder = os.path.join(folder, note_id)
@@ -190,9 +215,16 @@ def create_pdf(text, image_info, note_id, output_folder='pdfs'):
     c.drawText(textobject)
     c.showPage()
     
-    # 只添加大於 40KB 的圖片
-    for img_info in image_info:
-        if img_info['size_kb'] > 40:
+    # 找出所有大於 40KB 的圖片
+    valid_images = [img for img in image_info if img['size_kb'] > 40]
+    
+    if valid_images:
+        # 將第一張圖片移到最後
+        first_image = valid_images.pop(0)
+        valid_images.append(first_image)
+        
+        # 添加所有圖片
+        for img_info in valid_images:
             try:
                 img_path = img_info['path']
                 img = Image.open(img_path)
@@ -221,8 +253,8 @@ def create_pdf(text, image_info, note_id, output_folder='pdfs'):
                 print(f"已加入PDF的圖片: {img_path}, 大小: {img_info['size_kb']:.2f}KB")
             except Exception as e:
                 print(f"處理圖片時發生錯誤 {img_path}: {e}")
-        else:
-            print(f"跳過小於40KB的圖片: {img_info['path']}, 大小: {img_info['size_kb']:.2f}KB")
+    else:
+        print("沒有找到大於40KB的圖片")
     
     c.save()
     print(f"PDF已生成：{output_path}")
