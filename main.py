@@ -1,10 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
-from fpdf import FPDF
 import os
 import time
 from urllib.parse import urlparse
-import json
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -15,7 +13,12 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from PIL import Image
-import io
+
+def sanitize_filename(filename):
+    invalid_chars = '<>:"/\\|?*'
+    for char in invalid_chars:
+        filename = filename.replace(char, '_')
+    return filename[:100]
 
 def setup_driver():
     chrome_options = Options()
@@ -43,12 +46,10 @@ def fetch_xiaohongshu_content(url):
     
     try:
         driver.get(url)
-        # 等待頁面加載
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
         
-        # 模擬滾動以加載更多內容
         last_height = driver.execute_script("return document.body.scrollHeight")
         while True:
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -58,7 +59,6 @@ def fetch_xiaohongshu_content(url):
                 break
             last_height = new_height
         
-        # 等待一下確保動態內容加載完成
         time.sleep(5)
         return driver.page_source
     except Exception as e:
@@ -70,22 +70,37 @@ def fetch_xiaohongshu_content(url):
 def parse_content(html):
     soup = BeautifulSoup(html, 'html.parser')
     
-    # 儲存 HTML 以便檢查
     with open('debug.html', 'w', encoding='utf-8') as f:
         f.write(html)
     
     text = ""
     images = []
+    title = ""
+    author = ""
+    edit_date = ""
     
-    # 嘗試找到標題
-    title_selectors = ['.title', 'h1', '.content h1', '.note-content h1']
-    for selector in title_selectors:
-        title = soup.select_one(selector)
-        if title:
-            text += title.get_text(strip=True) + "\n\n"
+    # 從 title 標籤獲取標題
+    title_tag = soup.find('title')
+    if title_tag:
+        title = title_tag.get_text().replace(' - 小红书', '')
+    
+    # 尋找作者和日期
+    author_selectors = ['.user-name', '.author-name', '.nickname']
+    date_selectors = ['.publish-date', '.create-time', '.timestamp']
+    
+    for selector in author_selectors:
+        author_elem = soup.select_one(selector)
+        if author_elem:
+            author = author_elem.get_text(strip=True)
             break
     
-    # 嘗試找到主要內容區域
+    for selector in date_selectors:
+        date_elem = soup.select_one(selector)
+        if date_elem:
+            edit_date = date_elem.get_text(strip=True)
+            break
+    
+    # 尋找內容
     content_selectors = [
         'div[class*="note-content"]',
         'div[class*="content"]',
@@ -95,29 +110,25 @@ def parse_content(html):
         '.desc'
     ]
     
-    main_content = None
     for selector in content_selectors:
-        main_content = soup.select_one(selector)
-        if main_content:
-            # 提取文字內容
-            text += main_content.get_text(strip=True) + "\n"
+        content = soup.select_one(selector)
+        if content:
+            text += content.get_text(strip=True) + "\n"
             
-            # 按順序提取圖片
-            for img in main_content.find_all('img', recursive=True):
+            for img in content.find_all('img', recursive=True):
                 src = img.get('data-src') or img.get('src')
                 if src:
                     if src.startswith('//'):
                         src = 'https:' + src
                     elif not src.startswith('http'):
                         src = 'https://' + src.lstrip('/')
-                    if src not in images:  # 避免重複
+                    if src not in images:
                         images.append(src)
             break
     
     if not text:
         text = "無法提取內容"
     
-    # 如果在主要內容區域沒有找到圖片，使用備用方法
     if not images:
         img_selectors = [
             'img.note-image', 
@@ -137,21 +148,20 @@ def parse_content(html):
                         src = 'https:' + src
                     elif not src.startswith('http'):
                         src = 'https://' + src.lstrip('/')
-                    if src not in images:  # 避免重複
+                    if src not in images:
                         images.append(src)
     
-    print(f"找到 {len(images)} 張圖片，順序如下：")
-    for idx, img_url in enumerate(images, 1):
-        print(f"圖片 {idx}: {img_url}")
-    
-    return text, images
+    print(f"找到 {len(images)} 張圖片")
+    return text, images, title, author, edit_date
 
-def download_images(image_urls, note_id, folder='images'):
-    note_folder = os.path.join(folder, note_id)
+def download_images(image_urls, note_id, title, folder='images'):
+    safe_title = sanitize_filename(title)
+    folder_name = f"{safe_title}_{note_id}" if safe_title else note_id
+    note_folder = os.path.join(folder, folder_name)
     if not os.path.exists(note_folder):
         os.makedirs(note_folder)
     
-    image_info = []  # 儲存圖片路徑和大小信息
+    image_info = []
     for idx, url in enumerate(image_urls):
         try:
             response = requests.get(url)
@@ -160,35 +170,64 @@ def download_images(image_urls, note_id, folder='images'):
                 with open(img_path, 'wb') as handler:
                     handler.write(response.content)
                 
-                # 計算檔案大小（以KB為單位）
                 file_size_kb = os.path.getsize(img_path) / 1024
                 image_info.append({
                     'path': img_path,
                     'size_kb': file_size_kb
                 })
                 print(f"已保存圖片: {img_path}, 大小: {file_size_kb:.2f}KB")
-                time.sleep(0.5)  # 避免請求過快
+                time.sleep(0.5)
         except Exception as e:
             print(f"下載圖片失敗 {url}: {e}")
     return image_info
 
-def create_pdf(text, image_info, note_id, output_folder='pdfs'):
+def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_folder='pdfs'):
+    safe_title = sanitize_filename(title)
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     
-    output_path = os.path.join(output_folder, f'{note_id}.pdf')
+    filename = f"{safe_title}_{note_id}.pdf" if safe_title else f"{note_id}.pdf"
+    output_path = os.path.join(output_folder, filename)
     
-    # 註冊中文字體
     try:
         pdfmetrics.registerFont(TTFont('fireflysung', 'fireflysung.ttf'))
     except:
         print("無法載入中文字體，將使用預設字體")
     
-    # 創建 PDF
     c = canvas.Canvas(output_path, pagesize=A4)
     width, height = A4
     
-    # 添加文字
+    # 第一頁：標題和資訊
+    textobject = c.beginText()
+    textobject.setTextOrigin(50, height - 50)
+    try:
+        textobject.setFont('fireflysung', 16)
+    except:
+        textobject.setFont('Helvetica', 16)
+    
+    textobject.textLine(title)
+    textobject.moveCursor(0, 20)
+    
+    try:
+        textobject.setFont('fireflysung', 12)
+    except:
+        textobject.setFont('Helvetica', 12)
+    
+    textobject.textLine(f"網址：{url}")
+    textobject.moveCursor(0, 10)
+    
+    if author:
+        textobject.textLine(f"作者：{author}")
+        textobject.moveCursor(0, 10)
+    
+    if edit_date:
+        textobject.textLine(f"編輯日期：{edit_date}")
+        textobject.moveCursor(0, 10)
+    
+    c.drawText(textobject)
+    c.showPage()
+    
+    # 第二頁：內容
     textobject = c.beginText()
     textobject.setTextOrigin(50, height - 50)
     try:
@@ -196,14 +235,13 @@ def create_pdf(text, image_info, note_id, output_folder='pdfs'):
     except:
         textobject.setFont('Helvetica', 12)
     
-    # 處理文字換行
     words = text.split()
     lines = []
     current_line = []
     
     for word in words:
         current_line.append(word)
-        if len(' '.join(current_line)) > 70:  # 根據頁面寬度調整
+        if len(' '.join(current_line)) > 70:
             lines.append(' '.join(current_line[:-1]))
             current_line = [current_line[-1]]
     if current_line:
@@ -215,36 +253,30 @@ def create_pdf(text, image_info, note_id, output_folder='pdfs'):
     c.drawText(textobject)
     c.showPage()
     
-    # 找出所有大於 40KB 的圖片
+    # 圖片頁面
     valid_images = [img for img in image_info if img['size_kb'] > 40]
     
     if valid_images:
-        # 將第一張圖片移到最後
         first_image = valid_images.pop(0)
         valid_images.append(first_image)
         
-        # 添加所有圖片
         for img_info in valid_images:
             try:
                 img_path = img_info['path']
                 img = Image.open(img_path)
-                # 調整圖片大小以適應頁面
                 img_width, img_height = img.size
                 aspect = img_height / float(img_width)
                 
-                # 設定最大寬度為頁面寬度的 90%
                 max_width = width * 0.9
                 max_height = height * 0.9
                 
                 new_width = min(img_width, max_width)
                 new_height = new_width * aspect
                 
-                # 如果高度超出頁面，則根據高度調整
                 if new_height > max_height:
                     new_height = max_height
                     new_width = new_height / aspect
                 
-                # 計算居中位置
                 x = (width - new_width) / 2
                 y = (height - new_height) / 2
                 
@@ -273,25 +305,23 @@ def process_url(url):
         print(f"無法獲取筆記內容: {url}")
         return
     
-    text, image_urls = parse_content(html)
+    text, image_urls, title, author, edit_date = parse_content(html)
     if not image_urls:
         print(f"沒有找到圖片: {url}")
         return
     
-    image_info = download_images(image_urls, note_id)
+    image_info = download_images(image_urls, note_id, title)
     if not image_info:
         print(f"沒有成功下載的圖片: {url}")
         return
     
-    pdf_path = create_pdf(text, image_info, note_id)
+    pdf_path = create_pdf(text, image_info, note_id, title, url, author, edit_date)
     return pdf_path
 
 def main():
-    # 從 spec.md 讀取網址
-    with open('spec.md', 'r', encoding='utf-8') as f:
+    with open('url-to-be-crawled.md', 'r', encoding='utf-8') as f:
         content = f.read()
     
-    # 提取所有網址
     urls = []
     for line in content.split('\n'):
         if 'xiaohongshu.com' in line:
@@ -302,7 +332,6 @@ def main():
         print("沒有找到小紅書網址")
         return
     
-    # 處理每個網址
     for url in urls:
         print(f"\n開始處理網址: {url}")
         pdf_path = process_url(url)
