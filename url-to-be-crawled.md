@@ -20,3 +20,4 @@
 # 暗點首領日記
 
 - https://www.xiaohongshu.com/explore/67958daf0000000018007ad1?xsec_token=ABFglOJrzlqDWkuKL_SbktuETeCkdbFlJqUsWfbZcOG_g=&xsec_source=pc_user
+- https://www.xiaohongshu.com/explore/6742f721000000000202c5cb?xsec_token=ABfxfOejUcSTD-FIzXxX2P-OOk01w2tT8_3qnJKOI2beI=&xsec_source=pc_user

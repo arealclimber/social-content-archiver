@@ -17,7 +17,7 @@
 
 # 小紅書網址
 
-- https://www.xiaohongshu.com/explore/66f5a568000000002c02f73a?xsec_token=ABbcgIfjlLoP2qLyJVufrRe1oIHdrzdKyo0DzMVqeQwPE=&xsec_source=pc_user
+- https://www.xiaohongshu.com/explore/6742f721000000000202c5cb?xsec_token=ABfxfOejUcSTD-FIzXxX2P-OOk01w2tT8_3qnJKOI2beI=&xsec_source=pc_user
 
 # 遇到的問題
 

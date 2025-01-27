@@ -11,7 +11,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from PIL import Image
 
 def sanitize_filename(filename):
@@ -189,10 +189,8 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
     filename = f"{safe_title}_{note_id}.pdf" if safe_title else f"{note_id}.pdf"
     output_path = os.path.join(output_folder, filename)
     
-    try:
-        pdfmetrics.registerFont(TTFont('fireflysung', 'fireflysung.ttf'))
-    except:
-        print("無法載入中文字體，將使用預設字體")
+    # 使用內建的 CID 字體
+    pdfmetrics.registerFont(UnicodeCIDFont('STSong-Light'))
     
     c = canvas.Canvas(output_path, pagesize=A4)
     width, height = A4
@@ -200,18 +198,12 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
     # 第一頁：標題和資訊
     textobject = c.beginText()
     textobject.setTextOrigin(50, height - 50)
-    try:
-        textobject.setFont('fireflysung', 16)
-    except:
-        textobject.setFont('Helvetica', 16)
+    textobject.setFont('STSong-Light', 16)
     
     textobject.textLine(title)
     textobject.moveCursor(0, 20)
     
-    try:
-        textobject.setFont('fireflysung', 12)
-    except:
-        textobject.setFont('Helvetica', 12)
+    textobject.setFont('STSong-Light', 12)
     
     textobject.textLine(f"網址：{url}")
     textobject.moveCursor(0, 10)
@@ -230,23 +222,25 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
     # 第二頁：內容
     textobject = c.beginText()
     textobject.setTextOrigin(50, height - 50)
-    try:
-        textobject.setFont('fireflysung', 12)
-    except:
-        textobject.setFont('Helvetica', 12)
+    textobject.setFont('STSong-Light', 12)
     
-    words = text.split()
-    lines = []
-    current_line = []
+    # 改進文本分行處理
+    def split_text_to_lines(text, max_chars=40):
+        lines = []
+        current_line = ""
+        
+        for char in text:
+            current_line += char
+            if len(current_line) >= max_chars:
+                lines.append(current_line)
+                current_line = ""
+        
+        if current_line:
+            lines.append(current_line)
+        
+        return lines
     
-    for word in words:
-        current_line.append(word)
-        if len(' '.join(current_line)) > 70:
-            lines.append(' '.join(current_line[:-1]))
-            current_line = [current_line[-1]]
-    if current_line:
-        lines.append(' '.join(current_line))
-    
+    lines = split_text_to_lines(text)
     for line in lines:
         textobject.textLine(line)
     
@@ -255,10 +249,12 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
     
     # 圖片頁面
     valid_images = [img for img in image_info if img['size_kb'] > 40]
+    TOGGLE_FOR_INVERT_IMAGE_ORDER = False
     
     if valid_images:
-        first_image = valid_images.pop(0)
-        valid_images.append(first_image)
+        if TOGGLE_FOR_INVERT_IMAGE_ORDER:
+            first_image = valid_images.pop(0)
+            valid_images.append(first_image)
         
         for img_info in valid_images:
             try:
@@ -319,7 +315,7 @@ def process_url(url):
     return pdf_path
 
 def main():
-    with open('url-to-be-crawled.md', 'r', encoding='utf-8') as f:
+    with open('spec.md', 'r', encoding='utf-8') as f:
         content = f.read()
     
     urls = []
