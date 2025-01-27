@@ -67,11 +67,19 @@ def fetch_xiaohongshu_content(url):
     finally:
         driver.quit()
 
-def parse_content(html):
+def parse_content(html, note_id):
     soup = BeautifulSoup(html, 'html.parser')
     
-    with open('debug.html', 'w', encoding='utf-8') as f:
+    # 創建 debug_html 資料夾（如果不存在）
+    debug_folder = 'debug_html'
+    if not os.path.exists(debug_folder):
+        os.makedirs(debug_folder)
+    
+    # 保存 debug HTML
+    debug_file = os.path.join(debug_folder, f'debug_{note_id}.html')
+    with open(debug_file, 'w', encoding='utf-8') as f:
         f.write(html)
+    print(f"已保存 debug HTML 到: {debug_file}")
     
     text = ""
     images = []
@@ -114,44 +122,34 @@ def parse_content(html):
         content = soup.select_one(selector)
         if content:
             text += content.get_text(strip=True) + "\n"
-            
-            for img in content.find_all('img', recursive=True):
-                src = img.get('data-src') or img.get('src')
-                if src:
-                    if src.startswith('//'):
-                        src = 'https:' + src
-                    elif not src.startswith('http'):
-                        src = 'https://' + src.lstrip('/')
-                    if src not in images:
-                        images.append(src)
             break
     
     if not text:
         text = "無法提取內容"
     
-    if not images:
-        img_selectors = [
-            'img.note-image', 
-            'img[data-src]', 
-            'img[src*="xhscdn"]',
-            '.note-content img',
-            '.content img',
-            'article img'
-        ]
-        
-        for selector in img_selectors:
-            found_images = soup.select(selector)
-            for img in found_images:
-                src = img.get('data-src') or img.get('src')
-                if src:
-                    if src.startswith('//'):
-                        src = 'https:' + src
-                    elif not src.startswith('http'):
-                        src = 'https://' + src.lstrip('/')
-                    if src not in images:
-                        images.append(src)
+    # 獲取 og:image meta 標籤的圖片
+    og_images = soup.find_all('meta', property='og:image') or soup.find_all('meta', attrs={'name': 'og:image'})
+    for img in og_images:
+        src = img.get('content')
+        if src:
+            # 確保使用 HTTPS
+            if src.startswith('//'):
+                src = 'https:' + src
+            elif src.startswith('http://'):
+                src = 'https://' + src[7:]
+            elif not src.startswith('http'):
+                src = 'https://' + src.lstrip('/')
+            
+            # 處理圖片 URL
+            base_url = src.split('!')[0]  # 移除現有參數
+            if 'xhscdn.com' in base_url:
+                # 添加必要的參數
+                src = f"{base_url}!nd_dft_wlteh_webp_3"
+            
+            if src not in images:
+                images.append(src)
     
-    print(f"找到 {len(images)} 張圖片")
+    print(f"從 og:image 標籤找到 {len(images)} 張圖片")
     return text, images, title, author, edit_date
 
 def download_images(image_urls, note_id, title, folder='images'):
@@ -164,7 +162,26 @@ def download_images(image_urls, note_id, title, folder='images'):
     image_info = []
     for idx, url in enumerate(image_urls):
         try:
-            response = requests.get(url)
+            print(f"正在下載圖片 {idx+1}/{len(image_urls)}: {url}")
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                'Referer': 'https://www.xiaohongshu.com/',
+                'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache',
+                'Sec-Ch-Ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"macOS"',
+                'Sec-Fetch-Dest': 'image',
+                'Sec-Fetch-Mode': 'no-cors',
+                'Sec-Fetch-Site': 'cross-site'
+            }
+            
+            session = requests.Session()
+            response = session.get(url, headers=headers, timeout=10)
+            
             if response.status_code == 200:
                 img_path = os.path.join(note_folder, f'image_{idx+1}.jpg')
                 with open(img_path, 'wb') as handler:
@@ -176,9 +193,21 @@ def download_images(image_urls, note_id, title, folder='images'):
                     'size_kb': file_size_kb
                 })
                 print(f"已保存圖片: {img_path}, 大小: {file_size_kb:.2f}KB")
-                time.sleep(0.5)
+            else:
+                print(f"下載圖片失敗，狀態碼: {response.status_code}, URL: {url}")
+                print(f"回應內容: {response.text[:200]}")  # 只顯示前200個字符
+            
+            time.sleep(1)  # 增加延遲時間
+            
         except Exception as e:
-            print(f"下載圖片失敗 {url}: {e}")
+            print(f"下載圖片時發生錯誤 {url}: {str(e)}")
+            continue
+    
+    if not image_info:
+        print("沒有成功下載任何圖片")
+    else:
+        print(f"成功下載 {len(image_info)} 張圖片")
+    
     return image_info
 
 def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_folder='pdfs'):
@@ -248,7 +277,7 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
     c.showPage()
     
     # 圖片頁面
-    valid_images = [img for img in image_info if img['size_kb'] > 40]
+    valid_images = [img for img in image_info if img['size_kb'] > 1]
     TOGGLE_FOR_INVERT_IMAGE_ORDER = False
     
     if valid_images:
@@ -301,7 +330,7 @@ def process_url(url):
         print(f"無法獲取筆記內容: {url}")
         return
     
-    text, image_urls, title, author, edit_date = parse_content(html)
+    text, image_urls, title, author, edit_date = parse_content(html, note_id)
     if not image_urls:
         print(f"沒有找到圖片: {url}")
         return
