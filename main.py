@@ -126,30 +126,28 @@ def download_images(image_urls, note_id, folder='images'):
     if not os.path.exists(note_folder):
         os.makedirs(note_folder)
     
-    local_paths = []
+    image_info = []  # 儲存圖片路徑和大小信息
     for idx, url in enumerate(image_urls):
         try:
             response = requests.get(url)
             if response.status_code == 200:
+                img_path = os.path.join(note_folder, f'image_{idx+1}.jpg')
+                with open(img_path, 'wb') as handler:
+                    handler.write(response.content)
+                
                 # 計算檔案大小（以KB為單位）
-                file_size_kb = len(response.content) / 1024
-                
-                # 只有當檔案大於40KB時才保存並加入到local_paths
-                if file_size_kb > 40:
-                    img_path = os.path.join(note_folder, f'image_{idx+1}.jpg')
-                    with open(img_path, 'wb') as handler:
-                        handler.write(response.content)
-                    local_paths.append(img_path)
-                    print(f"已保存大於40KB的圖片: {img_path}, 大小: {file_size_kb:.2f}KB")
-                else:
-                    print(f"跳過小於40KB的圖片, 大小: {file_size_kb:.2f}KB")
-                
+                file_size_kb = os.path.getsize(img_path) / 1024
+                image_info.append({
+                    'path': img_path,
+                    'size_kb': file_size_kb
+                })
+                print(f"已保存圖片: {img_path}, 大小: {file_size_kb:.2f}KB")
                 time.sleep(0.5)  # 避免請求過快
         except Exception as e:
             print(f"下載圖片失敗 {url}: {e}")
-    return local_paths
+    return image_info
 
-def create_pdf(text, image_paths, note_id, output_folder='pdfs'):
+def create_pdf(text, image_info, note_id, output_folder='pdfs'):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     
@@ -192,34 +190,39 @@ def create_pdf(text, image_paths, note_id, output_folder='pdfs'):
     c.drawText(textobject)
     c.showPage()
     
-    # 添加圖片
-    for img_path in image_paths:
-        try:
-            img = Image.open(img_path)
-            # 調整圖片大小以適應頁面
-            img_width, img_height = img.size
-            aspect = img_height / float(img_width)
-            
-            # 設定最大寬度為頁面寬度的 90%
-            max_width = width * 0.9
-            max_height = height * 0.9
-            
-            new_width = min(img_width, max_width)
-            new_height = new_width * aspect
-            
-            # 如果高度超出頁面，則根據高度調整
-            if new_height > max_height:
-                new_height = max_height
-                new_width = new_height / aspect
-            
-            # 計算居中位置
-            x = (width - new_width) / 2
-            y = (height - new_height) / 2
-            
-            c.drawImage(img_path, x, y, width=new_width, height=new_height)
-            c.showPage()
-        except Exception as e:
-            print(f"處理圖片時發生錯誤 {img_path}: {e}")
+    # 只添加大於 40KB 的圖片
+    for img_info in image_info:
+        if img_info['size_kb'] > 40:
+            try:
+                img_path = img_info['path']
+                img = Image.open(img_path)
+                # 調整圖片大小以適應頁面
+                img_width, img_height = img.size
+                aspect = img_height / float(img_width)
+                
+                # 設定最大寬度為頁面寬度的 90%
+                max_width = width * 0.9
+                max_height = height * 0.9
+                
+                new_width = min(img_width, max_width)
+                new_height = new_width * aspect
+                
+                # 如果高度超出頁面，則根據高度調整
+                if new_height > max_height:
+                    new_height = max_height
+                    new_width = new_height / aspect
+                
+                # 計算居中位置
+                x = (width - new_width) / 2
+                y = (height - new_height) / 2
+                
+                c.drawImage(img_path, x, y, width=new_width, height=new_height)
+                c.showPage()
+                print(f"已加入PDF的圖片: {img_path}, 大小: {img_info['size_kb']:.2f}KB")
+            except Exception as e:
+                print(f"處理圖片時發生錯誤 {img_path}: {e}")
+        else:
+            print(f"跳過小於40KB的圖片: {img_info['path']}, 大小: {img_info['size_kb']:.2f}KB")
     
     c.save()
     print(f"PDF已生成：{output_path}")
@@ -243,12 +246,12 @@ def process_url(url):
         print(f"沒有找到圖片: {url}")
         return
     
-    image_paths = download_images(image_urls, note_id)
-    if not image_paths:
+    image_info = download_images(image_urls, note_id)
+    if not image_info:
         print(f"沒有成功下載的圖片: {url}")
         return
     
-    pdf_path = create_pdf(text, image_paths, note_id)
+    pdf_path = create_pdf(text, image_info, note_id)
     return pdf_path
 
 def main():
