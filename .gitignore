@@ -1,7 +1,10 @@
 images/
 pdfs/
+debug_html/
 
 debug.html
 output.html
 
 url-to-be-crawled.md
+normal-url-to-be-crawled.md
+inverted-order-urls-to-be-crawled.md
