@@ -13,14 +13,21 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from PIL import Image
+import re
 
 
 TOGGLE_FOR_INVERT_IMAGE_ORDER = False
 
 def sanitize_filename(filename):
-    invalid_chars = '<>:"/\\|?*'
-    for char in invalid_chars:
-        filename = filename.replace(char, '_')
+    # 定義所有需要替換的標點符號
+    punctuation = '<>:"/\\|?*.,!，。！？、；：""''（）()[]【】《》〈〉『』「」'
+    for char in punctuation:
+        filename = filename.replace(char, '-')
+    # 移除連續的 - 符號
+    while '--' in filename:
+        filename = filename.replace('--', '-')
+    # 移除開頭和結尾的 -
+    filename = filename.strip('-')
     return filename[:100]
 
 def setup_driver():
@@ -143,12 +150,7 @@ def parse_content(html, note_id):
             elif not src.startswith('http'):
                 src = 'https://' + src.lstrip('/')
             
-            # 處理圖片 URL
-            base_url = src.split('!')[0]  # 移除現有參數
-            if 'xhscdn.com' in base_url:
-                # 添加必要的參數
-                src = f"{base_url}!nd_dft_wlteh_webp_3"
-            
+            # 保持原始參數，不進行修改
             if src not in images:
                 images.append(src)
     
@@ -163,6 +165,11 @@ def download_images(image_urls, note_id, title, folder='images'):
         os.makedirs(note_folder)
     
     image_info = []
+    print("image_urls", image_urls)
+    
+    # 記錄錯誤信息
+    error_log = []
+    
     for idx, url in enumerate(image_urls):
         try:
             print(f"正在下載圖片 {idx+1}/{len(image_urls)}: {url}")
@@ -197,14 +204,23 @@ def download_images(image_urls, note_id, title, folder='images'):
                 })
                 print(f"已保存圖片: {img_path}, 大小: {file_size_kb:.2f}KB")
             else:
+                error_msg = f"下載失敗：\n網址：{url}\n標題：{title}\n第 {idx+1} 張圖片下載失敗（共 {len(image_urls)} 張）\n狀態碼：{response.status_code}\n回應內容：{response.text[:200]}\n"
+                error_log.append(error_msg)
                 print(f"下載圖片失敗，狀態碼: {response.status_code}, URL: {url}")
-                print(f"回應內容: {response.text[:200]}")  # 只顯示前200個字符
+                print(f"回應內容: {response.text[:200]}")
             
-            time.sleep(1)  # 增加延遲時間
+            time.sleep(1)
             
         except Exception as e:
+            error_msg = f"下載失敗：\n網址：{url}\n標題：{title}\n第 {idx+1} 張圖片下載失敗（共 {len(image_urls)} 張）\n錯誤信息：{str(e)}\n"
+            error_log.append(error_msg)
             print(f"下載圖片時發生錯誤 {url}: {str(e)}")
             continue
+    
+    # 如果有錯誤，寫入 error.txt
+    if error_log:
+        with open('error.txt', 'a', encoding='utf-8') as f:
+            f.write('\n'.join(error_log) + '\n' + '-' * 50 + '\n')
     
     if not image_info:
         print("沒有成功下載任何圖片")
