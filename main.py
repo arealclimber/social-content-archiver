@@ -11,9 +11,13 @@ from selenium.webdriver.support import expected_conditions as EC
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+from reportlab.pdfbase.ttfonts import TTFont
 from PIL import Image
 import re
+import platform
+import subprocess
+from pathlib import Path
+import shutil
 
 
 TOGGLE_FOR_INVERT_IMAGE_ORDER = False
@@ -165,7 +169,6 @@ def download_images(image_urls, note_id, title, folder='images'):
         os.makedirs(note_folder)
     
     image_info = []
-    print("image_urls", image_urls)
     
     # 記錄錯誤信息
     error_log = []
@@ -229,6 +232,97 @@ def download_images(image_urls, note_id, title, folder='images'):
     
     return image_info
 
+def get_system_fonts_path():
+    system = platform.system()
+    if system == 'Darwin':  # macOS
+        return [
+            '/System/Library/Fonts',
+            '/Library/Fonts',
+            str(Path.home() / 'Library/Fonts')
+        ]
+    elif system == 'Windows':
+        return [
+            'C:\\Windows\\Fonts'
+        ]
+    else:  # Linux
+        return [
+            '/usr/share/fonts',
+            '/usr/local/share/fonts',
+            str(Path.home() / '.fonts')
+        ]
+
+def find_chinese_font():
+    # 常見的中文字體名稱，優先使用 TTF 格式
+    chinese_fonts = [
+        # macOS 常見中文字體
+        'Songti.ttc',
+        'STHeiti Light.ttc',
+        'Hiragino Sans GB.ttc',
+        # Windows 常見中文字體
+        'simsun.ttc',
+        'simhei.ttf',
+        'msyh.ttf',
+        'simkai.ttf',
+        # Linux 常見中文字體
+        'wqy-microhei.ttc',
+        'wqy-zenhei.ttc',
+        'NotoSansCJK-Regular.ttc',
+        'NotoSansSC-Regular.otf'
+    ]
+    
+    # 檢查專案預設字體
+    fonts_dir = 'fonts'
+    if not os.path.exists(fonts_dir):
+        os.makedirs(fonts_dir)
+    
+    # 預設字體檔案
+    default_fonts = {
+        'noto_sans': 'NotoSansCJK-Regular.otf',
+        'noto_serif': 'NotoSerifCJK-Regular.otf'
+    }
+    
+    # 檢查並下載預設字體
+    for font_type, font_name in default_fonts.items():
+        font_path = os.path.join(fonts_dir, font_name)
+        if not os.path.exists(font_path):
+            print(f"下載預設字體 {font_name}...")
+            if font_type == 'noto_sans':
+                url = 'https://raw.githubusercontent.com/googlefonts/noto-cjk/main/Sans/SubsetOTF/TC/NotoSansTC-Regular.otf'
+            else:
+                url = 'https://raw.githubusercontent.com/googlefonts/noto-cjk/main/Serif/SubsetOTF/TC/NotoSerifTC-Regular.otf'
+            
+            try:
+                response = requests.get(url)
+                with open(font_path, 'wb') as f:
+                    f.write(response.content)
+                print(f"字體 {font_name} 下載完成")
+            except Exception as e:
+                print(f"下載字體 {font_name} 失敗: {e}")
+    
+    # 在系統字體目錄中尋找中文字體
+    for font_dir in get_system_fonts_path():
+        if os.path.exists(font_dir):
+            print(f"搜尋字體目錄: {font_dir}")
+            for font_name in chinese_fonts:
+                font_path = os.path.join(font_dir, font_name)
+                if os.path.exists(font_path):
+                    try:
+                        # 測試字體是否可用
+                        test_font = TTFont('TestFont', font_path)
+                        print(f"找到可用的系統字體: {font_path}")
+                        return font_path
+                    except:
+                        continue
+    
+    # 如果找不到系統字體，使用預設字體
+    default_font_path = os.path.join(fonts_dir, default_fonts['noto_sans'])
+    if os.path.exists(default_font_path):
+        print(f"使用預設字體: {default_font_path}")
+        return default_font_path
+    
+    print("錯誤：無法找到任何可用的中文字體")
+    return None
+
 def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_folder='pdfs'):
     safe_title = sanitize_filename(title)
     if not os.path.exists(output_folder):
@@ -237,8 +331,18 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
     filename = f"{safe_title}_{note_id}.pdf" if safe_title else f"{note_id}.pdf"
     output_path = os.path.join(output_folder, filename)
     
-    # 使用內建的 CID 字體
-    pdfmetrics.registerFont(UnicodeCIDFont('STSong-Light'))
+    # 尋找並註冊中文字體
+    font_path = find_chinese_font()
+    if not font_path:
+        print("錯誤：無法找到或下載合適的中文字體")
+        return None
+    
+    font_name = 'CustomFont'
+    try:
+        pdfmetrics.registerFont(TTFont(font_name, font_path))
+    except Exception as e:
+        print(f"註冊字體失敗: {e}")
+        return None
     
     c = canvas.Canvas(output_path, pagesize=A4)
     width, height = A4
@@ -248,12 +352,12 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
     textobject.setTextOrigin(50, height - 50)
     
     # 標題
-    textobject.setFont('STSong-Light', 16)
+    textobject.setFont(font_name, 16)
     textobject.textLine(title)
     textobject.moveCursor(0, 20)
     
     # 資訊
-    textobject.setFont('STSong-Light', 12)
+    textobject.setFont(font_name, 12)
     
     # 處理長 URL
     def wrap_url(url, max_width):
@@ -261,7 +365,7 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
         current_part = ""
         for char in url:
             test_part = current_part + char
-            if c.stringWidth(test_part, 'STSong-Light', 12) < max_width:
+            if c.stringWidth(test_part, font_name, 12) < max_width:
                 current_part = test_part
             else:
                 parts.append(current_part)
@@ -273,9 +377,9 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
     textobject.textLine("網址：")
     url_parts = wrap_url(url, width - 100)  # 100 是左右邊距的總和
     for part in url_parts:
-        textobject.moveCursor(40, 0)  # 縮進
+        textobject.moveCursor(5, 0)  # 縮進
         textobject.textLine(part)
-    textobject.moveCursor(-40, 10)  # 取消縮進並添加間距
+    textobject.moveCursor(-5, 10)  # 取消縮進並添加間距
     
     if author:
         textobject.textLine(f"作者：{author}")
@@ -290,12 +394,16 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
         lines = []
         current_line = ""
         
+        # 預處理文字，移除不可見字符和控制字符
+        text = ''.join(char for char in text if ord(char) >= 32 and ord(char) != 0xfffd or char in '\n\r\t')
+        
         for char in text:
             test_line = current_line + char
             if c.stringWidth(test_line, font_name, font_size) < max_width:
                 current_line = test_line
             else:
-                lines.append(current_line)
+                if current_line:
+                    lines.append(current_line)
                 current_line = char
         
         if current_line:
@@ -304,16 +412,20 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
         return lines
     
     # 正文內容
-    lines = split_text_to_lines(text, 'STSong-Light', 12, width - 100)
-    for line in lines:
-        # 檢查是否需要新頁
-        if textobject.getY() < 50:  # 如果剩餘空間不足
-            c.drawText(textobject)
-            c.showPage()
-            textobject = c.beginText()
-            textobject.setTextOrigin(50, height - 50)
-            textobject.setFont('STSong-Light', 12)
-        textobject.textLine(line)
+    try:
+        lines = split_text_to_lines(text, font_name, 12, width - 100)
+        for line in lines:
+            # 檢查是否需要新頁
+            if textobject.getY() < 50:  # 如果剩餘空間不足
+                c.drawText(textobject)
+                c.showPage()
+                textobject = c.beginText()
+                textobject.setTextOrigin(50, height - 50)
+                textobject.setFont(font_name, 12)
+            textobject.textLine(line)
+    except Exception as e:
+        print(f"處理文字時發生錯誤: {e}")
+        return None
     
     c.drawText(textobject)
     c.showPage()
