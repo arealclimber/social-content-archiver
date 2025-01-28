@@ -347,129 +347,164 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
     c = canvas.Canvas(output_path, pagesize=A4)
     width, height = A4
     
-    # 第一頁：合併標題、資訊和內容
-    textobject = c.beginText()
-    textobject.setTextOrigin(50, height - 50)
+    # 設定字體大小和行距
+    TITLE_FONT_SIZE = 16
+    INFO_FONT_SIZE = 10
+    CONTENT_FONT_SIZE = 16  
+    LINE_HEIGHT = CONTENT_FONT_SIZE * 1.3
+    MARGIN = 50
     
-    # 標題
-    textobject.setFont(font_name, 16)
-    textobject.textLine(title)
-    textobject.moveCursor(0, 20)
+    def create_page():
+        if c.getPageNumber() > 0:
+            c.showPage()
+        c.setFont(font_name, CONTENT_FONT_SIZE)  # 重新設定字體
+        return height - MARGIN
     
-    # 資訊
-    textobject.setFont(font_name, 12)
-    
-    # 處理長 URL
-    def wrap_url(url, max_width):
-        parts = []
-        current_part = ""
-        for char in url:
-            test_part = current_part + char
-            if c.stringWidth(test_part, font_name, 12) < max_width:
-                current_part = test_part
-            else:
-                parts.append(current_part)
-                current_part = char
-        if current_part:
-            parts.append(current_part)
-        return parts
-    
-    textobject.textLine("網址：")
-    url_parts = wrap_url(url, width - 100)  # 100 是左右邊距的總和
-    for part in url_parts:
-        textobject.moveCursor(5, 0)  # 縮進
-        textobject.textLine(part)
-    textobject.moveCursor(-5, 10)  # 取消縮進並添加間距
-    
-    if author:
-        textobject.textLine(f"作者：{author}")
-        textobject.moveCursor(0, 10)
-    
-    if edit_date:
-        textobject.textLine(f"編輯日期：{edit_date}")
-        textobject.moveCursor(0, 20)
-    
-    # 內容
-    def split_text_to_lines(text, font_name, font_size, max_width):
-        lines = []
+    # 處理標題
+    y = height - MARGIN
+    c.setFont(font_name, TITLE_FONT_SIZE)
+    title_width = c.stringWidth(title, font_name, TITLE_FONT_SIZE)
+    if title_width > width - 2 * MARGIN:
+        # 分行處理標題
+        words = list(title)
         current_line = ""
-        
-        # 預處理文字，移除不可見字符和控制字符
-        text = ''.join(char for char in text if ord(char) >= 32 and ord(char) != 0xfffd or char in '\n\r\t')
-        
-        for char in text:
-            test_line = current_line + char
-            if c.stringWidth(test_line, font_name, font_size) < max_width:
+        title_lines = []
+        for word in words:
+            test_line = current_line + word
+            if c.stringWidth(test_line, font_name, TITLE_FONT_SIZE) < width - 2 * MARGIN:
                 current_line = test_line
             else:
-                if current_line:
-                    lines.append(current_line)
-                current_line = char
+                title_lines.append(current_line)
+                current_line = word
+        if current_line:
+            title_lines.append(current_line)
+    else:
+        title_lines = [title]
+    
+    # 繪製標題
+    for line in title_lines:
+        if y < MARGIN + LINE_HEIGHT:
+            y = create_page()
+            c.setFont(font_name, TITLE_FONT_SIZE)  # 重新設定標題字體
+        c.drawString(MARGIN, y, line)
+        y -= TITLE_FONT_SIZE * 1.5
+    
+    y -= 20  # 標題和資訊之間的間距
+    
+    # 繪製資訊
+    info_lines = []
+    
+    # 處理 URL 換行
+    url_prefix = "網址："
+    remaining_width = width - 2 * MARGIN - c.stringWidth(url_prefix, font_name, INFO_FONT_SIZE)
+    url_parts = []
+    current_part = ""
+    
+    for char in url:
+        test_part = current_part + char
+        if c.stringWidth(test_part, font_name, INFO_FONT_SIZE) < remaining_width:
+            current_part = test_part
+        else:
+            url_parts.append(current_part)
+            current_part = char
+    if current_part:
+        url_parts.append(current_part)
+    
+    # 添加 URL 到資訊行
+    info_lines.append(url_prefix)
+    for i, part in enumerate(url_parts):
+        info_lines.append("    " + part)  # 添加縮進
+    
+    # 添加其他資訊
+    if author:
+        info_lines.append(f"作者：{author}")
+    if edit_date:
+        info_lines.append(f"編輯日期：{edit_date}")
+    
+    # 繪製所有資訊行
+    for line in info_lines:
+        if y < MARGIN + LINE_HEIGHT:
+            y = create_page()
+        c.setFont(font_name, INFO_FONT_SIZE)  # 設定資訊字體
+        c.drawString(MARGIN, y, line)
+        y -= INFO_FONT_SIZE * 1.5
+    
+    y -= 20  # 資訊和正文之間的間距
+    
+    # 處理正文
+    paragraphs = text.split('\n')
+    current_y = y
+    
+    for paragraph in paragraphs:
+        if not paragraph.strip():
+            current_y -= LINE_HEIGHT
+            continue
+            
+        words = list(paragraph)
+        current_line = ""
+        
+        for word in words:
+            test_line = current_line + word
+            if c.stringWidth(test_line, font_name, CONTENT_FONT_SIZE) < width - 2 * MARGIN:
+                current_line = test_line
+            else:
+                if current_y < MARGIN + LINE_HEIGHT:
+                    current_y = create_page()
+                c.setFont(font_name, CONTENT_FONT_SIZE)  # 確保正確的字體設定
+                c.drawString(MARGIN, current_y, current_line)
+                current_y -= LINE_HEIGHT
+                current_line = word
         
         if current_line:
-            lines.append(current_line)
-        
-        return lines
+            if current_y < MARGIN + LINE_HEIGHT:
+                current_y = create_page()
+            c.setFont(font_name, CONTENT_FONT_SIZE)  # 確保正確的字體設定
+            c.drawString(MARGIN, current_y, current_line)
+            current_y -= LINE_HEIGHT * 1.5  # 段落間距
     
-    # 正文內容
-    try:
-        lines = split_text_to_lines(text, font_name, 12, width - 100)
-        for line in lines:
-            # 檢查是否需要新頁
-            if textobject.getY() < 50:  # 如果剩餘空間不足
-                c.drawText(textobject)
-                c.showPage()
-                textobject = c.beginText()
-                textobject.setTextOrigin(50, height - 50)
-                textobject.setFont(font_name, 12)
-            textobject.textLine(line)
-    except Exception as e:
-        print(f"處理文字時發生錯誤: {e}")
-        return None
-    
-    c.drawText(textobject)
     c.showPage()
     
-    # 圖片頁面
-    valid_images = [img for img in image_info if img['size_kb'] > 1]
+    # 處理圖片
+    for img_info in image_info:
+        try:
+            img_path = img_info['path']
+            if img_info['size_kb'] <= 1:  # 跳過小於1KB的圖片
+                continue
+                
+            img = Image.open(img_path)
+            img_width, img_height = img.size
+            aspect = img_height / float(img_width)
+            
+            # 計算圖片在頁面上的尺寸
+            available_width = width - 2 * MARGIN
+            available_height = height - 2 * MARGIN
+            
+            if img_width > available_width:
+                img_width = available_width
+                img_height = img_width * aspect
+            
+            if img_height > available_height:
+                img_height = available_height
+                img_width = img_height / aspect
+            
+            # 居中放置圖片
+            x = (width - img_width) / 2
+            y = (height - img_height) / 2
+            
+            c.drawImage(img_path, x, y, width=img_width, height=img_height)
+            c.showPage()
+            
+        except Exception as e:
+            print(f"處理圖片時發生錯誤 {img_path}: {e}")
+            continue
     
-    if valid_images:
-        if TOGGLE_FOR_INVERT_IMAGE_ORDER and len(valid_images) > 1:
-            # 將第一張圖片移到最後
-            first_image = valid_images.pop(0)  # 取出第一張圖片
-            valid_images.append(first_image)   # 將其加到最後
-        
-        for img_info in valid_images:
-            try:
-                img_path = img_info['path']
-                img = Image.open(img_path)
-                img_width, img_height = img.size
-                aspect = img_height / float(img_width)
-                
-                max_width = width * 0.9
-                max_height = height * 0.9
-                
-                new_width = min(img_width, max_width)
-                new_height = new_width * aspect
-                
-                if new_height > max_height:
-                    new_height = max_height
-                    new_width = new_height / aspect
-                
-                x = (width - new_width) / 2
-                y = (height - new_height) / 2
-                
-                c.drawImage(img_path, x, y, width=new_width, height=new_height)
-                c.showPage()
-                print(f"已加入PDF的圖片: {img_path}, 大小: {img_info['size_kb']:.2f}KB")
-            except Exception as e:
-                print(f"處理圖片時發生錯誤 {img_path}: {e}")
-    else:
-        print("沒有找到大於1KB的圖片")
-    
-    c.save()
-    print(f"PDF已生成：{output_path}")
-    return output_path
+    try:
+        c.save()
+        print(f"PDF已生成：{output_path}")
+        return output_path
+    except Exception as e:
+        print(f"保存PDF時發生錯誤: {e}")
+        return None
 
 def extract_note_id(url):
     path = urlparse(url).path
