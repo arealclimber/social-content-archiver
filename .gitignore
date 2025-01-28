@@ -1,7 +1,20 @@
-images/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 專案特定目錄
 pdfs/
-debug_html/
+images/
 fonts/
+debug_html/
+
+# 錯誤日誌
+error.txt
+
+# 系統文件
+.DS_Store
+Thumbs.db
 
 debug.html
 output.html

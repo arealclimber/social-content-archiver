@@ -1,3 +1,34 @@
+"""
+這個模組用於爬取小紅書文章並將其轉換為PDF格式。主要功能包括：
+
+1. 從文件中讀取小紅書URL列表
+2. 使用Selenium模擬瀏覽器訪問每個URL
+3. 提取文章內容（標題、作者、日期、正文和圖片）
+4. 下載文章中的所有圖片
+5. 生成包含文字內容和圖片的PDF文件
+
+工作流程：
+1. 讀取URL列表
+2. 對每個URL：
+   - 使用Selenium獲取頁面內容
+   - 解析HTML提取所需信息
+   - 下載文章中的圖片
+   - 創建PDF文件包含文字和圖片
+3. 處理完成後，在指定目錄生成PDF文件
+
+依賴項：
+- selenium: 用於模擬瀏覽器訪問
+- beautifulsoup4: 用於解析HTML
+- reportlab: 用於生成PDF
+- Pillow: 用於圖片處理
+- requests: 用於下載圖片
+
+使用方法：
+1. 在 normal-url-to-be-crawled.md 文件中添加小紅書URL（每行一個）
+2. 運行腳本：python main.py
+3. PDF文件將生成在 pdfs/ 目錄下
+"""
+
 import requests
 from bs4 import BeautifulSoup
 import os
@@ -23,6 +54,15 @@ import shutil
 TOGGLE_FOR_INVERT_IMAGE_ORDER = False
 
 def sanitize_filename(filename):
+    """
+    清理文件名，移除不合法字符。
+    
+    Args:
+        filename (str): 原始文件名
+        
+    Returns:
+        str: 清理後的文件名，長度不超過100字符
+    """
     # 定義所有需要替換的標點符號
     punctuation = '<>:"/\\|?*.,!，。！？、；：""''（）()[]【】《》〈〉『』「」'
     for char in punctuation:
@@ -35,6 +75,12 @@ def sanitize_filename(filename):
     return filename[:100]
 
 def setup_driver():
+    """
+    設置Chrome WebDriver的配置。
+    
+    Returns:
+        webdriver.Chrome: 配置好的Chrome WebDriver實例
+    """
     chrome_options = Options()
     chrome_options.add_argument('--headless')
     chrome_options.add_argument('--no-sandbox')
@@ -42,6 +88,15 @@ def setup_driver():
     return webdriver.Chrome(options=chrome_options)
 
 def fetch_xiaohongshu_content(url):
+    """
+    使用Selenium獲取小紅書頁面內容。
+    
+    Args:
+        url (str): 小紅書文章URL
+        
+    Returns:
+        str or None: 頁面HTML內容，如果獲取失敗則返回None
+    """
     chrome_options = Options()
     chrome_options.add_argument('--headless')
     chrome_options.add_argument('--no-sandbox')
@@ -82,6 +137,16 @@ def fetch_xiaohongshu_content(url):
         driver.quit()
 
 def parse_content(html, note_id):
+    """
+    解析HTML內容，提取文章信息。
+    
+    Args:
+        html (str): 頁面HTML內容
+        note_id (str): 文章ID
+        
+    Returns:
+        tuple: (文章文本, 圖片URL列表, 標題, 作者, 編輯日期)
+    """
     soup = BeautifulSoup(html, 'html.parser')
     
     # 創建 debug_html 資料夾（如果不存在）
@@ -162,6 +227,18 @@ def parse_content(html, note_id):
     return text, images, title, author, edit_date
 
 def download_images(image_urls, note_id, title, folder='images'):
+    """
+    下載文章中的所有圖片。
+    
+    Args:
+        image_urls (list): 圖片URL列表
+        note_id (str): 文章ID
+        title (str): 文章標題
+        folder (str): 圖片保存目錄
+        
+    Returns:
+        list: 包含圖片信息的字典列表，每個字典包含path和size_kb
+    """
     safe_title = sanitize_filename(title)
     folder_name = f"{safe_title}_{note_id}" if safe_title else note_id
     note_folder = os.path.join(folder, folder_name)
@@ -233,6 +310,12 @@ def download_images(image_urls, note_id, title, folder='images'):
     return image_info
 
 def get_system_fonts_path():
+    """
+    獲取系統字體目錄路徑。
+    
+    Returns:
+        list: 系統字體目錄路徑列表
+    """
     system = platform.system()
     if system == 'Darwin':  # macOS
         return [
@@ -252,6 +335,12 @@ def get_system_fonts_path():
         ]
 
 def find_chinese_font():
+    """
+    查找可用的中文字體。
+    
+    Returns:
+        str or None: 中文字體文件路徑，如果未找到則返回None
+    """
     # 常見的中文字體名稱，優先使用 TTF 格式
     chinese_fonts = [
         # macOS 常見中文字體
@@ -324,6 +413,22 @@ def find_chinese_font():
     return None
 
 def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_folder='pdfs'):
+    """
+    創建PDF文件，包含文章內容和圖片。
+    
+    Args:
+        text (str): 文章文本內容
+        image_info (list): 圖片信息列表
+        note_id (str): 文章ID
+        title (str): 文章標題
+        url (str): 文章URL
+        author (str): 作者
+        edit_date (str): 編輯日期
+        output_folder (str): PDF輸出目錄
+        
+    Returns:
+        str or None: PDF文件路徑，如果創建失敗則返回None
+    """
     safe_title = sanitize_filename(title)
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -507,10 +612,28 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
         return None
 
 def extract_note_id(url):
+    """
+    從URL中提取文章ID。
+    
+    Args:
+        url (str): 文章URL
+        
+    Returns:
+        str: 文章ID
+    """
     path = urlparse(url).path
     return path.split('/')[-1].split('?')[0]
 
 def process_url(url):
+    """
+    處理單個URL，完成從爬取到生成PDF的完整流程。
+    
+    Args:
+        url (str): 文章URL
+        
+    Returns:
+        str or None: 生成的PDF文件路徑，如果處理失敗則返回None
+    """
     note_id = extract_note_id(url)
     print(f"處理筆記 ID: {note_id}")
     
@@ -533,6 +656,9 @@ def process_url(url):
     return pdf_path
 
 def main():
+    """
+    主函數，讀取URL列表並處理每個URL。
+    """
     with open('normal-url-to-be-crawled.md', 'r', encoding='utf-8') as f:
         content = f.read()
     
