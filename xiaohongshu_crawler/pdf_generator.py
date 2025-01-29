@@ -106,7 +106,7 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     
-    filename = f"{safe_title}_{note_id}.pdf" if safe_title else f"{note_id}.pdf"
+    filename = f"{safe_title}.pdf" if safe_title else f"{note_id}.pdf"
     output_path = os.path.join(output_folder, filename)
     
     # 尋找並註冊中文字體
