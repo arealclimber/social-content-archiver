@@ -659,7 +659,7 @@ def main():
     """
     主函數，讀取URL列表並處理每個URL。
     """
-    with open('normal-url-to-be-crawled.md', 'r', encoding='utf-8') as f:
+    with open('note-urls.md', 'r', encoding='utf-8') as f:
         content = f.read()
     
     urls = []
