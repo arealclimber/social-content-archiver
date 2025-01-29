@@ -8,6 +8,7 @@ pdfs/
 images/
 fonts/
 debug_html/
+author_html_manually/
 
 # 錯誤日誌
 error.txt
@@ -22,3 +23,9 @@ output.html
 url-to-be-crawled.md
 normal-url-to-be-crawled.md
 inverted-order-urls-to-be-crawled.md
+note-urls.md
+author_links.md
+backup-note-urls.md
+sylus-fan-fic-rednote.md
+
+author_links.json
