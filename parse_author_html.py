@@ -16,6 +16,12 @@ def normalize_url(url):
 def parse_html_links(html_content, filename):
     soup = BeautifulSoup(html_content, 'html.parser')
     
+    # 提取作者名稱
+    author_name = ""
+    og_title = soup.find('meta', attrs={'name': 'og:title'})
+    if og_title and og_title.get('content'):
+        author_name = og_title.get('content').replace(' - 小红书', '')
+    
     # 找到所有 class 為 'cover ld mask' 的 a 標籤
     links = soup.find_all('a', class_='cover ld mask')
     
@@ -32,6 +38,7 @@ def parse_html_links(html_content, filename):
     
     return {
         "filename": filename,
+        "author_name": author_name,
         "links": hrefs,
         "links_count": len(hrefs),
         "titles": titles,
@@ -63,12 +70,12 @@ def process_html_files():
             print(f"處理檔案 {html_file.name} 時發生錯誤: {str(e)}")
     
     # 將結果寫入JSON檔案
-    output_file = "author_links.json"
+    output_file = "notes_in_author.json"
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
     
     # 將所有連結寫入Markdown檔案
-    markdown_file = "author_links.md"
+    markdown_file = "notes_in_author.md"
     with open(markdown_file, 'w', encoding='utf-8') as f:
         for link in all_links:
             f.write(f"- {link}\n")
