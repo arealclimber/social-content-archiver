@@ -125,6 +125,14 @@ def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_
     c = canvas.Canvas(output_path, pagesize=A4)
     width, height = A4
     
+    # 設置 PDF metadata
+    c.setTitle(title)
+    print(f"author in create_pdf: {author}")
+    c.setAuthor(author if author else "")
+    # c.setCreator("小紅書文章爬蟲")
+    c.setCreator(author if author else "")
+    c.setSubject(url)
+    
     # 設定字體大小和行距
     TITLE_FONT_SIZE = 16
     INFO_FONT_SIZE = 10

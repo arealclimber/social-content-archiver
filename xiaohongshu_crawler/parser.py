@@ -41,7 +41,7 @@ def parse_content(html, note_id):
         title = title_tag.get_text().replace(' - 小红书', '')
     
     # 尋找作者和日期
-    author_selectors = ['.user-name', '.author-name', '.nickname']
+    author_selectors = ['.user-name', '.author-name', '.nickname', '.username']
     date_selectors = ['.publish-date', '.create-time', '.timestamp']
     
     for selector in author_selectors:
