@@ -93,48 +93,5 @@ def main():
         else:
             print(f"處理失敗: {url}")
 
-# def main():
-#     """
-#     主函數，根據輸入處理URL或作者頁面。
-#     """
-#     print("請選擇操作模式：")
-#     print("1. 從文件讀取URL列表")
-#     print("2. 處理作者主頁")
-#     choice = input("請輸入選項（1或2）: ").strip()
-    
-#     if choice == "1":
-#         # 從文件讀取URL
-#         with open('note-urls.md', 'r', encoding='utf-8') as f:
-#             content = f.read()
-        
-#         urls = []
-#         for line in content.split('\n'):
-#             if 'xiaohongshu.com' in line:
-#                 url = line.strip('- ').strip()
-#                 urls.append(url)
-        
-#         if not urls:
-#             print("沒有找到小紅書網址")
-#             return
-        
-#         for url in urls:
-#             print(f"\n開始處理網址: {url}")
-#             pdf_path = process_url(url)
-#             if pdf_path:
-#                 print(f"成功生成 PDF: {pdf_path}")
-#             else:
-#                 print(f"處理失敗: {url}")
-    
-#     elif choice == "2":
-#         # 處理作者主頁
-#         author_url = input("請輸入作者主頁URL: ").strip()
-#         if 'xiaohongshu.com' not in author_url:
-#             print("請輸入有效的小紅書作者主頁URL")
-#             return
-#         process_author(author_url)
-    
-#     else:
-#         print("無效的選項")
-
 if __name__ == "__main__":
     main() 
