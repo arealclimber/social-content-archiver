@@ -9,6 +9,7 @@ images/
 fonts/
 debug_html/
 author_html_manually/
+author_link_archive/
 
 # 錯誤日誌
 error.txt
