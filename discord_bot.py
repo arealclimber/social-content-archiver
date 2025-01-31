@@ -7,28 +7,37 @@ from xiaohongshu_crawler.main import process_url
 import tempfile
 import shutil
 import re
+import logging
+import logging.config
+import sys
+
+# 設置日誌
+os.makedirs('logs', exist_ok=True)
+logging.config.fileConfig('deploy/logging.conf')
+logger = logging.getLogger('discord_bot')
 
 # 使用絕對路徑載入 .env
 current_dir = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.join(current_dir, '.env')
-print(f"Looking for .env at: {env_path}")
+logger.info(f"Looking for .env at: {env_path}")
 
 if os.path.exists(env_path):
-    print(f"Found .env file at: {env_path}")
+    logger.info(f"Found .env file at: {env_path}")
     load_dotenv(env_path, override=True)
 else:
-    print(f"Warning: .env file not found at {env_path}")
+    logger.warning(f"Warning: .env file not found at {env_path}")
     # 嘗試使用 find_dotenv 作為備選方案
     dotenv_path = find_dotenv()
     if dotenv_path:
-        print(f"Found .env using find_dotenv at: {dotenv_path}")
+        logger.info(f"Found .env using find_dotenv at: {dotenv_path}")
         load_dotenv(dotenv_path, override=True)
 
 TOKEN = os.getenv('DISCORD_TOKEN')
-print(f"Loaded TOKEN: {TOKEN}")
+logger.info("Discord Token loaded")
 
 # Token 驗證
 if not TOKEN:
+    logger.error("Discord Token not found!")
     raise ValueError("未找到 Discord Token！請確保 .env 文件中包含有效的 DISCORD_TOKEN")
 
 # 設定 Bot 的所有權限
@@ -90,10 +99,10 @@ def extract_xiaohongshu_url(text):
 
 @bot.event
 async def on_ready():
-    print(f'Bot 已登入為: {bot.user.name}')
-    print(f'Bot ID: {bot.user.id}')
-    print(f'已啟用的權限: {intents.value}')
-    print('------')
+    logger.info(f'Bot logged in as: {bot.user.name}')
+    logger.info(f'Bot ID: {bot.user.id}')
+    logger.info(f'Intents enabled: {intents.value}')
+    logger.info('------')
     
     # 顯示邀請連結
     invite_link = discord.utils.oauth_url(
@@ -106,7 +115,7 @@ async def on_ready():
             read_message_history=True
         )
     )
-    print(f'邀請 Bot 到伺服器的連結: {invite_link}')
+    logger.info(f'Bot invite link: {invite_link}')
 
 @bot.event
 async def on_message(message):
@@ -120,12 +129,13 @@ async def on_message(message):
         return
     
     try:
+        logger.info(f"Processing URL: {url} from user: {message.author}")
         # 發送處理消息
         await message.channel.send(f"檢測到小紅書連結: {url}\n開始處理...")
         
         # 創建臨時目錄
         with tempfile.TemporaryDirectory() as temp_dir:
-            print(f"創建臨時目錄: {temp_dir}")
+            logger.info(f"Created temp directory: {temp_dir}")
             
             # 處理 URL，指定輸出目錄和所有格式
             result = await asyncio.to_thread(
@@ -135,9 +145,10 @@ async def on_message(message):
                 ['pdf', 'epub', 'markdown']
             )
             
-            print(f"URL 處理結果: {result}")
+            logger.info(f"URL processing result: {result}")
             
             if not result:
+                logger.error(f"Failed to process URL: {url}")
                 await message.channel.send("處理文章時發生錯誤，未能生成任何文件。")
                 return
             
@@ -147,36 +158,36 @@ async def on_message(message):
                     try:
                         # 檢查文件大小
                         file_size = os.path.getsize(file_path)
-                        print(f"{format_type.upper()} 文件大小: {file_size} bytes")
+                        logger.info(f"{format_type.upper()} file size: {file_size} bytes")
                         
                         if file_size > 8 * 1024 * 1024:  # 8MB limit
+                            logger.warning(f"{format_type.upper()} file too large: {file_size} bytes")
                             await message.channel.send(f"{format_type.upper()} 文件太大 ({file_size/1024/1024:.2f}MB)，超過 Discord 8MB 限制。")
                             continue
                         
                         # 發送文件
                         await message.channel.send(f"正在上傳 {format_type.upper()} 文件...")
                         await message.channel.send(file=discord.File(file_path))
-                        print(f"{format_type.upper()} 文件發送成功")
+                        logger.info(f"{format_type.upper()} file sent successfully")
                     except Exception as e:
                         error_msg = f"發送 {format_type.upper()} 文件時發生錯誤: {str(e)}"
-                        print(error_msg)
+                        logger.error(error_msg)
                         await message.channel.send(error_msg)
                 else:
+                    logger.error(f"File not found: {file_path}")
                     await message.channel.send(f"未能生成 {format_type.upper()} 文件。")
             
             await message.channel.send("處理完成！")
         
     except Exception as e:
         error_message = f"處理過程中發生錯誤：{str(e)}"
-        print(error_message)
+        logger.error(error_message, exc_info=True)
         await message.channel.send(error_message)
-        # 輸出完整的錯誤追蹤
-        import traceback
-        traceback.print_exc()
 
 @bot.event
 async def on_error(event, *args, **kwargs):
-    print(f'發生錯誤在事件 {event}: {args} {kwargs}')
+    logger.error(f'Error in event {event}', exc_info=True)
 
 def run_bot():
+    logger.info("Starting bot...")
     bot.run(TOKEN) 
