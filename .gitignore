@@ -1,8 +1,28 @@
-images/
+# env
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 專案特定目錄
 pdfs/
-debug_html/
+epubs/
+markdowns/
+images/
 fonts/
 backup/
+debug_html/
+author_html_manually/
+author_link_archive/
+
+# 錯誤日誌
+error.txt
+
+# 系統文件
+.DS_Store
+Thumbs.db
 
 debug.html
 output.html
@@ -10,3 +30,11 @@ output.html
 url-to-be-crawled.md
 normal-url-to-be-crawled.md
 inverted-order-urls-to-be-crawled.md
+note-urls.md
+author_links.md
+backup-note-urls.md
+sylus-fan-fic-rednote.md
+notes_in_author.md
+
+author_links.json
+notes_in_author.json
