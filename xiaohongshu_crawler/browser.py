@@ -51,7 +51,16 @@ def fetch_xiaohongshu_content(url):
     driver = setup_driver()
     
     try:
+        print(f"Accessing URL: {url}")
         driver.get(url)
+        
+        # Wait for redirection to complete
+        if 'xhslink.com' in url:
+            print("Detected short URL, waiting for redirection...")
+            time.sleep(5)  # Give enough time for redirection
+            current_url = driver.current_url
+            print(f"Redirected to: {current_url}")
+        
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )

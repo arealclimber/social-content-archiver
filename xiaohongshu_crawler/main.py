@@ -106,12 +106,13 @@ def main():
     
     urls = []
     for line in content.split('\n'):
-        if 'xiaohongshu.com' in line:
+        # Support both xiaohongshu.com and xhslink.com
+        if 'xiaohongshu.com' in line or 'xhslink.com' in line:
             url = line.strip('- ').strip()
             urls.append(url)
     
     if not urls:
-        print("No Xiaohongshu URLs found")
+        print("No valid URLs found")
         return
     
     for url in urls:

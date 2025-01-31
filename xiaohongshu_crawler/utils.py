@@ -36,6 +36,12 @@ def extract_note_id(url):
         str: Article ID
     """
     path = urlparse(url).path
+    # Process xhslink.com format URLs
+    if 'xhslink.com' in url:
+        # Extract the last part of the path as note_id
+        note_id = path.split('/')[-1]
+        return note_id
+    # Process general Xiaohongshu URLs
     return path.split('/')[-1].split('?')[0]
 
 def get_system_fonts_path():
