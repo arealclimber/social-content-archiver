@@ -55,7 +55,7 @@ mkdir -p /home/ubuntu/crawler-file-discord-bot
 cd /home/ubuntu/crawler-file-discord-bot
 
 # 使用 SSH 克隆代碼
-git clone git@github.com:arealclimber/crawler-file-discord-bot.git .
+git clone git@github.com:arealclimber/crawl-website-make-pdf.git .
 
 # 創建 .env 文件
 cat > .env << EOL
