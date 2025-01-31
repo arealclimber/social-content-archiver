@@ -653,6 +653,7 @@ def process_url(url):
         return
     
     pdf_path = create_pdf(text, image_info, note_id, title, url, author, edit_date)
+    
     return pdf_path
 
 def main():

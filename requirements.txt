@@ -5,3 +5,4 @@ selenium==4.17.2
 webdriver_manager==4.0.1
 reportlab==4.1.0
 Pillow==10.2.0 
+ebooklib==0.18.0

@@ -1,12 +1,15 @@
-# 小紅書文章爬蟲與 PDF 生成工具
+# 小紅書文章爬蟲與多格式轉換工具
 
-這是一個用於爬取小紅書文章並將其轉換為 PDF 的工具。本工具可以批量處理作者頁面和文章，並生成易於閱讀的 PDF 文件。
+這是一個用於爬取小紅書文章並將其轉換為多種格式的工具。本工具可以批量處理作者頁面和文章，並生成易於閱讀的 PDF、EPUB 和 Markdown 文件。
 
 ## 功能特點
 
 - 支援從小紅書作者頁面批量獲取文章連結
 - 自動解析作者頁面 HTML 並提取文章資訊
-- 支援將文章內容轉換為 PDF 格式
+- 支援多種輸出格式：
+  - PDF：適合列印和閱讀
+  - EPUB：適合電子書閱讀器
+  - Markdown：適合進一步編輯和版本控制
 - 提供多種資料輸出格式（JSON、Markdown）
 
 ## 系統需求
@@ -15,11 +18,11 @@
 - 相關 Python 套件：
   - requests 2.31.0：HTTP 請求處理
   - beautifulsoup4 4.12.3：HTML 解析
-  - fpdf 1.7.2：PDF 生成
   - selenium 4.17.2：網頁自動化
   - webdriver_manager 4.0.1：WebDriver 管理
   - reportlab 4.1.0：PDF 進階處理
   - Pillow 10.2.0：圖片處理
+  - ebooklib 0.18.0：EPUB 生成
 
 ## 安裝方法
 
@@ -41,9 +44,11 @@ pip install -r requirements.txt
 ```
 .
 ├── xiaohongshu_crawler/    # 核心爬蟲模組
-├── fonts/                  # PDF 生成用字體檔案
+├── fonts/                  # 字體檔案
 ├── images/                 # 下載的圖片暫存目錄
-├── pdfs/                   # 生成的 PDF 輸出目錄
+├── pdfs/                   # PDF 輸出目錄
+├── epubs/                  # EPUB 輸出目錄
+├── markdowns/             # Markdown 輸出目錄
 ├── author_html_manually/   # 手動保存的作者頁面 HTML
 ├── author_link_archive/    # 作者連結存檔
 ├── debug_html/            # 除錯用 HTML 檔案
@@ -57,16 +62,34 @@ pip install -r requirements.txt
 
 ### 1. 執行主程式
 
-將要爬取的小紅書網址用 bullet-point 格式寫入 `note-urls.md` 檔案，然後執行：
+將要爬取的小紅書網址用 bullet-point 格式寫入 `note-urls.md` 檔案，然後執行以下命令：
+
+#### 基本用法（只生成 PDF）：
 
 ```bash
-python run.py
+python -m xiaohongshu_crawler
+```
+
+#### 生成指定格式：
+
+```bash
+# 只生成 EPUB
+python -m xiaohongshu_crawler --formats epub
+
+# 生成 PDF 和 Markdown
+python -m xiaohongshu_crawler --formats pdf markdown
+
+# 生成所有支援的格式
+python -m xiaohongshu_crawler --formats pdf epub markdown
 ```
 
 這將會：
 
-- 下載圖片到 images/
-- 產生 PDF 放到 pdfs/
+- 下載圖片到 `images/` 目錄
+- 根據指定格式生成文件：
+  - PDF 文件保存在 `pdfs/` 目錄
+  - EPUB 文件保存在 `epubs/` 目錄
+  - Markdown 文件保存在 `markdowns/` 目錄（圖片保存在 `markdowns/images/` 子目錄）
 
 ### 2. 解析作者頁面 HTML
 
@@ -88,8 +111,34 @@ python parse_author_html.py
 - `notes_in_author.md`：包含所有文章連結的 Markdown 格式清單
 - `author_links.json`：作者頁面連結的 JSON 格式存檔
 - `author_links.md`：作者頁面連結的 Markdown 格式清單
-- 生成的 PDF 檔案將存放在 `pdfs` 目錄中
-- 下載的圖片暫存於 `images` 目錄中
+- 生成的文件將根據格式分別存放在對應目錄：
+  - PDF 文件：`pdfs/`
+  - EPUB 文件：`epubs/`
+  - Markdown 文件：`markdowns/`
+- 下載的圖片暫存於 `images/` 目錄中
+
+## 輸出格式說明
+
+### PDF 格式
+
+- 適合列印和閱讀
+- 包含完整的文章內容、圖片和 metadata
+- 自動處理中文字體
+- 自動分頁和排版
+
+### EPUB 格式
+
+- 適合在電子書閱讀器上閱讀
+- 支援目錄導航
+- 保留原始圖片品質
+- 包含完整 metadata
+
+### Markdown 格式
+
+- 適合進一步編輯和版本控制
+- 圖片以相對路徑方式引用
+- 保留原始格式和結構
+- 易於轉換為其他格式
 
 ## 注意事項
 

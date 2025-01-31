@@ -10,7 +10,7 @@
 
 from .browser import fetch_xiaohongshu_content
 from .parser import parse_content
-from .pdf_generator import create_pdf
+from .file_converter import create_pdf
 from .image_handler import download_images
 from .utils import sanitize_filename, extract_note_id
 

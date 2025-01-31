@@ -5,6 +5,8 @@ __pycache__/
 
 # 專案特定目錄
 pdfs/
+epubs/
+markdowns/
 images/
 fonts/
 debug_html/
