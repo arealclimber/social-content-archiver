@@ -6,7 +6,7 @@ import os
 import requests
 from .utils import sanitize_filename
 
-def download_images(image_urls, note_id, title, folder='images'):
+def download_images(image_urls, note_id, title, output_dir=None):
     """
     Download all images from an article.
     
@@ -14,14 +14,22 @@ def download_images(image_urls, note_id, title, folder='images'):
         image_urls (list): List of image URLs
         note_id (str): Article ID
         title (str): Article title
-        folder (str): Image save directory
+        output_dir (str): Base output directory
         
     Returns:
         list: List of dictionaries containing image information, each dictionary includes path and size_kb
     """
+    # 如果提供了輸出目錄，使用它作為基礎目錄
+    base_dir = output_dir if output_dir else os.getcwd()
+    
+    # 在基礎目錄下創建 images 目錄
+    images_dir = os.path.join(base_dir, 'images')
+    if not os.path.exists(images_dir):
+        os.makedirs(images_dir)
+    
     safe_title = sanitize_filename(title)
     folder_name = f"{safe_title}_{note_id}" if safe_title else note_id
-    note_folder = os.path.join(folder, folder_name)
+    note_folder = os.path.join(images_dir, folder_name)
     if not os.path.exists(note_folder):
         os.makedirs(note_folder)
     
