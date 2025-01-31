@@ -1,5 +1,5 @@
 """
-圖片處理模組，負責下載和處理圖片
+Image processing module, responsible for downloading and processing images
 """
 
 import os
@@ -8,16 +8,16 @@ from .utils import sanitize_filename
 
 def download_images(image_urls, note_id, title, folder='images'):
     """
-    下載文章中的所有圖片。
+    Download all images from an article.
     
     Args:
-        image_urls (list): 圖片URL列表
-        note_id (str): 文章ID
-        title (str): 文章標題
-        folder (str): 圖片保存目錄
+        image_urls (list): List of image URLs
+        note_id (str): Article ID
+        title (str): Article title
+        folder (str): Image save directory
         
     Returns:
-        list: 包含圖片信息的字典列表，每個字典包含path和size_kb
+        list: List of dictionaries containing image information, each dictionary includes path and size_kb
     """
     safe_title = sanitize_filename(title)
     folder_name = f"{safe_title}_{note_id}" if safe_title else note_id
@@ -30,7 +30,7 @@ def download_images(image_urls, note_id, title, folder='images'):
     
     for idx, url in enumerate(image_urls):
         try:
-            print(f"正在下載圖片 {idx+1}/{len(image_urls)}: {url}")
+            print(f"Downloading image {idx+1}/{len(image_urls)}: {url}")
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
                 'Referer': 'https://www.xiaohongshu.com/',
@@ -60,27 +60,27 @@ def download_images(image_urls, note_id, title, folder='images'):
                     'path': img_path,
                     'size_kb': file_size_kb
                 })
-                print(f"已保存圖片: {img_path}, 大小: {file_size_kb:.2f}KB")
+                print(f"Image saved: {img_path}, Size: {file_size_kb:.2f}KB")
             else:
-                error_msg = f"下載失敗：\n網址：{url}\n標題：{title}\n第 {idx+1} 張圖片下載失敗（共 {len(image_urls)} 張）\n狀態碼：{response.status_code}\n回應內容：{response.text[:200]}\n"
+                error_msg = f"Download failed:\nURL: {url}\nTitle: {title}\nImage {idx+1} of {len(image_urls)} failed\nStatus code: {response.status_code}\nResponse content: {response.text[:200]}\n"
                 error_log.append(error_msg)
-                print(f"下載圖片失敗，狀態碼: {response.status_code}, URL: {url}")
-                print(f"回應內容: {response.text[:200]}")
+                print(f"Failed to download image, status code: {response.status_code}, URL: {url}")
+                print(f"Response content: {response.text[:200]}")
             
         except Exception as e:
-            error_msg = f"下載失敗：\n網址：{url}\n標題：{title}\n第 {idx+1} 張圖片下載失敗（共 {len(image_urls)} 張）\n錯誤信息：{str(e)}\n"
+            error_msg = f"Download failed:\nURL: {url}\nTitle: {title}\nImage {idx+1} of {len(image_urls)} failed\nError message: {str(e)}\n"
             error_log.append(error_msg)
-            print(f"下載圖片時發生錯誤 {url}: {str(e)}")
+            print(f"Error occurred while downloading image {url}: {str(e)}")
             continue
     
-    # 如果有錯誤，寫入 error.txt
+    # Write to error.txt if there are any errors
     if error_log:
         with open('error.txt', 'a', encoding='utf-8') as f:
             f.write('\n'.join(error_log) + '\n' + '-' * 50 + '\n')
     
     if not image_info:
-        print("沒有成功下載任何圖片")
+        print("No images were successfully downloaded")
     else:
-        print(f"成功下載 {len(image_info)} 張圖片")
+        print(f"Successfully downloaded {len(image_info)} images")
     
     return image_info 

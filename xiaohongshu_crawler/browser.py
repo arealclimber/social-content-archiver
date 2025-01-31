@@ -1,5 +1,5 @@
 """
-瀏覽器模組，負責與網頁互動和內容獲取
+Browser module, responsible for web page interaction and content retrieval
 """
 
 from selenium import webdriver
@@ -15,10 +15,10 @@ import os
 
 def setup_driver():
     """
-    設置Chrome WebDriver的配置。
+    Configure Chrome WebDriver settings.
     
     Returns:
-        webdriver.Chrome: 配置好的Chrome WebDriver實例
+        webdriver.Chrome: Configured Chrome WebDriver instance
     """
     chrome_options = Options()
     chrome_options.add_argument('--headless')
@@ -40,13 +40,13 @@ def setup_driver():
 
 def fetch_xiaohongshu_content(url):
     """
-    使用Selenium獲取小紅書頁面內容。
+    Use Selenium to fetch Xiaohongshu page content.
     
     Args:
-        url (str): 小紅書文章URL
+        url (str): Xiaohongshu article URL
         
     Returns:
-        str or None: 頁面HTML內容，如果獲取失敗則返回None
+        str or None: Page HTML content, returns None if fetch fails
     """
     driver = setup_driver()
     
@@ -68,47 +68,47 @@ def fetch_xiaohongshu_content(url):
         time.sleep(5)
         return driver.page_source
     except Exception as e:
-        print(f"獲取頁面失敗: {e}")
+        print(f"Failed to fetch page: {e}")
         return None
     finally:
         driver.quit()
 
 def get_author_notes(author_url):
     """
-    獲取作者的所有筆記URL。
+    Get all note URLs from an author.
     
     Args:
-        author_url (str): 作者主頁URL
+        author_url (str): Author's profile URL
         
     Returns:
-        list: 筆記URL列表
+        list: List of note URLs
     """
     driver = setup_driver()
     note_urls = []
     
     try:
-        print(f"正在訪問作者頁面: {author_url}")
+        print(f"Accessing author's page: {author_url}")
         driver.get(author_url)
         
-        # 等待頁面主要內容加載
+        # Wait for main content to load
         try:
             WebDriverWait(driver, 20).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "div[role='main']"))
             )
         except TimeoutException:
-            print("頁面加載超時，嘗試繼續處理...")
+            print("Page load timeout, attempting to continue...")
         
-        print("等待頁面完全加載（5秒）...")
-        time.sleep(5)  # 給予更多時間加載
+        print("Waiting for page to fully load (5 seconds)...")
+        time.sleep(5)  # Give more time to load
         
-        # 先嘗試滾動一次，觸發動態加載
+        # First try to scroll once to trigger dynamic loading
         driver.execute_script("window.scrollTo(0, 300);")
         time.sleep(2)
         driver.execute_script("window.scrollTo(0, 0);")
         time.sleep(2)
         
-        print("正在保存初始HTML...")
-        # 保存初始HTML以供調試
+        print("Saving initial HTML...")
+        # Save initial HTML for debugging
         initial_html = driver.page_source
         debug_folder = 'debug_html'
         if not os.path.exists(debug_folder):
@@ -117,16 +117,16 @@ def get_author_notes(author_url):
         author_id = author_url.split('/')[-1]
         with open(os.path.join(debug_folder, f'author_page_{author_id}.html'), 'w', encoding='utf-8') as f:
             f.write(initial_html)
-        print(f"已保存作者頁面HTML到: debug_html/author_page_{author_id}.html")
+        print(f"Author page HTML saved to: debug_html/author_page_{author_id}.html")
         
         scroll_count = 0
-        max_scroll_attempts = 30  # 最大滾動次數
+        max_scroll_attempts = 30  # Maximum number of scroll attempts
         no_new_content_count = 0
         
         while scroll_count < max_scroll_attempts:
-            # 獲取當前頁面上的所有筆記連結
+            # Get all note links on current page
             try:
-                # 使用更精確的選擇器，包括 cover ld mask 相關元素
+                # Use more precise selectors, including cover ld mask related elements
                 note_elements = driver.find_elements(By.CSS_SELECTOR, 
                     "a[href*='/explore/'], a[href*='/discovery/'], a[href*='/note/'], .cover.ld.mask, [class*='note-item']")
                 
@@ -134,14 +134,14 @@ def get_author_notes(author_url):
                 
                 for element in note_elements:
                     try:
-                        # 嘗試從元素或其父元素獲取href
+                        # Try to get href from element or its parent
                         href = element.get_attribute('href')
                         if not href:
-                            # 如果元素本身沒有href，嘗試查找父元素或子元素
+                            # If element itself has no href, try to find parent element or child elements
                             parent = element.find_element(By.XPATH, "./..")
                             href = parent.get_attribute('href')
                         if not href:
-                            # 嘗試查找子元素中的連結
+                            # Try to find links in child elements
                             links = element.find_elements(By.TAG_NAME, "a")
                             for link in links:
                                 href = link.get_attribute('href')
@@ -152,62 +152,62 @@ def get_author_notes(author_url):
                             if href not in note_urls:
                                 note_urls.append(href)
                     except Exception as e:
-                        print(f"處理單個元素時發生錯誤: {e}")
+                        print(f"Error processing individual element: {e}")
                         continue
                 
                 if len(note_urls) > current_count:
-                    print(f"已找到 {len(note_urls)} 篇筆記")
+                    print(f"Found {len(note_urls)} notes")
                     no_new_content_count = 0
                 else:
                     no_new_content_count += 1
                 
-                # 每次滾動後保存當前HTML（增加等待時間）
-                if scroll_count % 5 == 0:  # 每5次滾動保存一次
-                    print(f"等待頁面穩定（3秒）...")
-                    time.sleep(3)  # 等待頁面穩定
+                # Save current HTML after each scroll (with increased wait time)
+                if scroll_count % 5 == 0:  # Save every 5 scrolls
+                    print(f"Waiting for page to stabilize (3 seconds)...")
+                    time.sleep(3)  # Wait for page to stabilize
                     current_html = driver.page_source
                     with open(os.path.join(debug_folder, f'author_page_{author_id}_scroll_{scroll_count}.html'), 'w', encoding='utf-8') as f:
                         f.write(current_html)
-                    print(f"已保存滾動後的HTML到: debug_html/author_page_{author_id}_scroll_{scroll_count}.html")
+                    print(f"Scroll HTML saved to: debug_html/author_page_{author_id}_scroll_{scroll_count}.html")
                 
-                if no_new_content_count >= 3:  # 如果連續3次沒有新內容，就停止
-                    print("已經沒有新的筆記了")
-                    print("等待最終頁面加載（5秒）...")
-                    time.sleep(5)  # 最終保存前多等待
-                    # 保存最終HTML
+                if no_new_content_count >= 3:  # Stop if no new content for 3 consecutive times
+                    print("No more new notes")
+                    print("Waiting for final page load (5 seconds)...")
+                    time.sleep(5)  # Wait longer before final save
+                    # Save final HTML
                     final_html = driver.page_source
                     with open(os.path.join(debug_folder, f'author_page_{author_id}_final.html'), 'w', encoding='utf-8') as f:
                         f.write(final_html)
-                    print(f"已保存最終HTML到: debug_html/author_page_{author_id}_final.html")
+                    print(f"Final HTML saved to: debug_html/author_page_{author_id}_final.html")
                     break
                 
             except Exception as e:
-                print(f"解析筆記時發生錯誤: {e}")
+                print(f"Error parsing notes: {e}")
             
-            # 滾動頁面
+            # Scroll page
             try:
                 last_height = driver.execute_script("return document.body.scrollHeight")
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(3)  # 增加等待時間
+                time.sleep(3)  # Increase wait time
                 
-                # 檢查是否已滾動到底
+                # Check if scrolled to bottom
                 new_height = driver.execute_script("return document.body.scrollHeight")
                 if new_height == last_height:
                     no_new_content_count += 1
                 else:
                     no_new_content_count = 0
                 
-                # 隨機上下滾動以模擬真實用戶行為
+                # Random up and down scrolling to simulate real user behavior
                 if scroll_count % 3 == 0:
                     driver.execute_script("window.scrollTo(0, document.body.scrollHeight * 0.8);")
                     time.sleep(1)
                 
             except Exception as e:
-                print(f"滾動頁面時發生錯誤: {e}")
+                print(f"Error scrolling page: {e}")
             
             scroll_count += 1
         
-        # 確保URL格式正確
+        # Ensure correct URL format
         cleaned_urls = []
         for url in note_urls:
             if url and isinstance(url, str):
@@ -215,10 +215,10 @@ def get_author_notes(author_url):
                     url = f"https://www.xiaohongshu.com{url}"
                 cleaned_urls.append(url)
         
-        return list(set(cleaned_urls))  # 去重
+        return list(set(cleaned_urls))  # Remove duplicates
         
     except Exception as e:
-        print(f"獲取作者筆記失敗: {e}")
+        print(f"Failed to get author's notes: {e}")
         return []
     finally:
         driver.quit() 

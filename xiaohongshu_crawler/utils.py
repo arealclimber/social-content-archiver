@@ -1,5 +1,5 @@
 """
-通用工具模組，提供各種輔助函數
+General utility module, providing various helper functions
 """
 
 from urllib.parse import urlparse
@@ -9,13 +9,13 @@ from pathlib import Path
 
 def sanitize_filename(filename):
     """
-    清理文件名，移除不合法字符。
+    Clean filename by removing illegal characters.
     
     Args:
-        filename (str): 原始文件名
+        filename (str): Original filename
         
     Returns:
-        str: 清理後的文件名，長度不超過100字符
+        str: Cleaned filename, not exceeding 100 characters
     """
     punctuation = '<>:"/\\|?*.,!，。！？、；：""''（）()[]【】《》〈〉『』「」'
     for char in punctuation:
@@ -27,23 +27,23 @@ def sanitize_filename(filename):
 
 def extract_note_id(url):
     """
-    從URL中提取文章ID。
+    Extract article ID from URL.
     
     Args:
-        url (str): 文章URL
+        url (str): Article URL
         
     Returns:
-        str: 文章ID
+        str: Article ID
     """
     path = urlparse(url).path
     return path.split('/')[-1].split('?')[0]
 
 def get_system_fonts_path():
     """
-    獲取系統字體目錄路徑。
+    Get system font directory paths.
     
     Returns:
-        list: 系統字體目錄路徑列表
+        list: List of system font directory paths
     """
     system = platform.system()
     if system == 'Darwin':  # macOS

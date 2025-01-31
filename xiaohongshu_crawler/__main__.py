@@ -1,5 +1,5 @@
 """
-小紅書文章爬蟲和轉換工具的入口點
+Entry point for Xiaohongshu article crawler and converter tool
 """
 
 from .main import main

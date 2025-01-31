@@ -1,5 +1,5 @@
 """
-文件轉換模組，負責將內容轉換為不同格式（如PDF、EPUB、Markdown）
+File conversion module, responsible for converting content into different formats (such as PDF, EPUB, Markdown)
 """
 
 import os
@@ -15,7 +15,7 @@ from datetime import datetime
 from .utils import sanitize_filename, get_system_fonts_path
 
 class FontManager:
-    """字體管理類，負責處理中文字體的查找和註冊"""
+    """Font management class, responsible for handling Chinese font discovery and registration"""
     
     def __init__(self):
         self.chinese_fonts = [
@@ -38,39 +38,39 @@ class FontManager:
     
     def find_chinese_font(self):
         """
-        查找可用的中文字體。
+        Find available Chinese fonts.
         
         Returns:
-            str or None: 中文字體文件路徑，如果未找到則返回None
+            str or None: Chinese font file path, returns None if not found
         """
-        # 檢查專案預設字體
+        # Check project default fonts
         fonts_dir = 'fonts'
         if not os.path.exists(fonts_dir):
             os.makedirs(fonts_dir)
         
-        # 檢查並下載預設字體
+        # Check and download default fonts
         for font_type, font_name in self.default_fonts.items():
             font_path = os.path.join(fonts_dir, font_name)
             if not os.path.exists(font_path):
                 self._download_font(font_type, font_name, font_path)
         
-        # 在系統字體目錄中尋找中文字體
+        # Look for Chinese fonts in system font directory
         system_font = self._find_system_font()
         if system_font:
             return system_font
         
-        # 如果找不到系統字體，使用預設字體
+        # If system font not found, use default font
         default_font_path = os.path.join(fonts_dir, self.default_fonts['noto_sans'])
         if os.path.exists(default_font_path):
-            print(f"使用預設字體: {default_font_path}")
+            print(f"Using default font: {default_font_path}")
             return default_font_path
         
-        print("錯誤：無法找到任何可用的中文字體")
+        print("Error: No available Chinese fonts found")
         return None
     
     def _download_font(self, font_type, font_name, font_path):
-        """下載字體文件"""
-        print(f"下載預設字體 {font_name}...")
+        """Download font file"""
+        print(f"Downloading default font {font_name}...")
         try:
             if font_type == 'noto_sans':
                 url = 'https://raw.githubusercontent.com/googlefonts/noto-cjk/main/Sans/SubsetOTF/TC/NotoSansTC-Regular.otf'
@@ -80,28 +80,28 @@ class FontManager:
             response = requests.get(url)
             with open(font_path, 'wb') as f:
                 f.write(response.content)
-            print(f"字體 {font_name} 下載完成")
+            print(f"Font {font_name} download completed")
         except Exception as e:
-            print(f"下載字體 {font_name} 失敗: {e}")
+            print(f"Failed to download font {font_name}: {e}")
     
     def _find_system_font(self):
-        """在系統中查找可用的中文字體"""
+        """Search for available Chinese fonts in the system"""
         for font_dir in get_system_fonts_path():
             if os.path.exists(font_dir):
-                print(f"搜尋字體目錄: {font_dir}")
+                print(f"Searching font directory: {font_dir}")
                 for font_name in self.chinese_fonts:
                     font_path = os.path.join(font_dir, font_name)
                     if os.path.exists(font_path):
                         try:
                             test_font = TTFont('TestFont', font_path)
-                            print(f"找到可用的系統字體: {font_path}")
+                            print(f"Found available system font: {font_path}")
                             return font_path
                         except:
                             continue
         return None
 
 class PDFConverter:
-    """PDF轉換器，負責將內容轉換為PDF格式"""
+    """PDF converter, responsible for converting content to PDF format"""
     
     def __init__(self):
         self.font_manager = FontManager()
@@ -113,22 +113,22 @@ class PDFConverter:
     
     def create_pdf(self, text, image_info, note_id, title, url, author, edit_date, output_folder='pdfs'):
         """
-        創建PDF文件，包含文章內容和圖片。
+        Create PDF file containing article content and images.
         
         Args:
-            text (str): 文章文本內容
-            image_info (list): 圖片信息列表
-            note_id (str): 文章ID
-            title (str): 文章標題
-            url (str): 文章URL
-            author (str): 作者
-            edit_date (str): 編輯日期
-            output_folder (str): PDF輸出目錄
+            text (str): Article text content
+            image_info (list): List of image information
+            note_id (str): Article ID
+            title (str): Article title
+            url (str): Article URL
+            author (str): Author
+            edit_date (str): Edit date
+            output_folder (str): PDF output directory
             
         Returns:
-            str or None: PDF文件路徑，如果創建失敗則返回None
+            str or None: PDF file path, returns None if creation fails
         """
-        # 準備輸出路徑
+        # Prepare output path
         safe_title = sanitize_filename(title)
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
@@ -136,7 +136,7 @@ class PDFConverter:
         filename = f"{safe_title}.pdf" if safe_title else f"{note_id}.pdf"
         output_path = os.path.join(output_folder, filename)
         
-        # 設置字體
+        # Set font
         font_path = self.font_manager.find_chinese_font()
         if not font_path:
             return None
@@ -145,17 +145,17 @@ class PDFConverter:
         try:
             pdfmetrics.registerFont(TTFont(font_name, font_path))
         except Exception as e:
-            print(f"註冊字體失敗: {e}")
+            print(f"Font registration failed: {e}")
             return None
         
-        # 創建PDF文件
+        # Create PDF file
         c = canvas.Canvas(output_path, pagesize=A4)
         width, height = A4
         
-        # 設置 metadata
+        # Set metadata
         self._set_metadata(c, title, author, url)
         
-        # 繪製內容
+        # Draw content
         y = self._draw_title(c, title, font_name, width, height)
         y = self._draw_info(c, url, author, edit_date, font_name, width, y)
         self._draw_content(c, text, font_name, width, height, y)
@@ -163,25 +163,25 @@ class PDFConverter:
         
         try:
             c.save()
-            print(f"PDF已生成：{output_path}")
+            print(f"PDF generated: {output_path}")
             return output_path
         except Exception as e:
-            print(f"保存PDF時發生錯誤: {e}")
+            print(f"Error occurred while saving PDF: {e}")
             return None
     
     def _set_metadata(self, canvas, title, author, url):
-        """設置PDF文件的metadata"""
+        """Set PDF file metadata"""
         canvas.setTitle(title)
         canvas.setAuthor(author if author else "")
         canvas.setCreator(author if author else "")
         canvas.setSubject(url)
     
     def _draw_title(self, canvas, title, font_name, width, height):
-        """繪製標題"""
+        """Draw title"""
         y = height - self.MARGIN
         canvas.setFont(font_name, self.TITLE_FONT_SIZE)
         
-        # 處理標題換行
+        # Handle title line breaks
         title_width = canvas.stringWidth(title, font_name, self.TITLE_FONT_SIZE)
         if title_width > width - 2 * self.MARGIN:
             words = list(title)
@@ -199,7 +199,7 @@ class PDFConverter:
         else:
             title_lines = [title]
         
-        # 繪製標題
+        # Draw title
         for line in title_lines:
             canvas.drawString(self.MARGIN, y, line)
             y -= self.TITLE_FONT_SIZE * 1.5
@@ -207,11 +207,11 @@ class PDFConverter:
         return y - 20
     
     def _draw_info(self, canvas, url, author, edit_date, font_name, width, y):
-        """繪製文章信息"""
+        """Draw article information"""
         canvas.setFont(font_name, self.INFO_FONT_SIZE)
         
-        # 處理URL換行
-        url_prefix = "網址："
+        # Handle URL line breaks
+        url_prefix = "URL: "
         remaining_width = width - 2 * self.MARGIN - canvas.stringWidth(url_prefix, font_name, self.INFO_FONT_SIZE)
         url_parts = []
         current_part = ""
@@ -226,25 +226,25 @@ class PDFConverter:
         if current_part:
             url_parts.append(current_part)
         
-        # 繪製URL
+        # Draw URL
         canvas.drawString(self.MARGIN, y, url_prefix)
         y -= self.INFO_FONT_SIZE * 1.5
         for part in url_parts:
             canvas.drawString(self.MARGIN + 20, y, part)
             y -= self.INFO_FONT_SIZE * 1.5
         
-        # 繪製作者和日期
+        # Draw author and date
         if author:
-            canvas.drawString(self.MARGIN, y, f"作者：{author}")
+            canvas.drawString(self.MARGIN, y, f"Author: {author}")
             y -= self.INFO_FONT_SIZE * 1.5
         if edit_date:
-            canvas.drawString(self.MARGIN, y, f"編輯日期：{edit_date}")
+            canvas.drawString(self.MARGIN, y, f"Edit date: {edit_date}")
             y -= self.INFO_FONT_SIZE * 1.5
         
         return y - 20
     
     def _draw_content(self, canvas, text, font_name, width, height, y):
-        """繪製正文內容"""
+        """Draw main content"""
         canvas.setFont(font_name, self.CONTENT_FONT_SIZE)
         current_y = y
         
@@ -280,7 +280,7 @@ class PDFConverter:
         canvas.showPage()
     
     def _draw_images(self, canvas, image_info, width, height):
-        """繪製圖片"""
+        """Draw images"""
         for img_info in image_info:
             try:
                 img_path = img_info['path']
@@ -309,28 +309,28 @@ class PDFConverter:
                 canvas.showPage()
                 
             except Exception as e:
-                print(f"處理圖片時發生錯誤 {img_path}: {e}")
+                print(f"Error occurred while processing image {img_path}: {e}")
                 continue
 
 class EPUBConverter:
-    """EPUB轉換器，負責將內容轉換為EPUB格式"""
+    """EPUB converter, responsible for converting content to EPUB format"""
     
     def create_epub(self, text, image_info, note_id, title, url, author, edit_date, output_folder='epubs'):
         """
-        創建EPUB文件。
+        Create EPUB file.
         
         Args:
-            text (str): 文章文本內容
-            image_info (list): 圖片信息列表
-            note_id (str): 文章ID
-            title (str): 文章標題
-            url (str): 文章URL
-            author (str): 作者
-            edit_date (str): 編輯日期
-            output_folder (str): EPUB輸出目錄
+            text (str): Article text content
+            image_info (list): List of image information
+            note_id (str): Article ID
+            title (str): Article title
+            url (str): Article URL
+            author (str): Author
+            edit_date (str): Edit date
+            output_folder (str): EPUB output directory
             
         Returns:
-            str or None: EPUB文件路徑，如果創建失敗則返回None
+            str or None: EPUB file path, returns None if creation fails
         """
         try:
             if not os.path.exists(output_folder):
@@ -340,39 +340,39 @@ class EPUBConverter:
             filename = f"{safe_title}.epub" if safe_title else f"{note_id}.epub"
             output_path = os.path.join(output_folder, filename)
             
-            # 創建EPUB書籍
+            # Create EPUB book
             book = epub.EpubBook()
             
-            # 設置metadata
+            # Set metadata
             book.set_title(title)
             book.set_language('zh-TW')
-            book.add_author(author if author else "未知作者")
+            book.add_author(author if author else "Unknown author")
             book.add_metadata('DC', 'date', edit_date if edit_date else datetime.now().strftime('%Y-%m-%d'))
             book.add_metadata('DC', 'source', url)
             
-            # 創建章節
+            # Create chapter
             chapter = epub.EpubHtml(title='content', file_name='content.xhtml', lang='zh-TW')
             
-            # 準備HTML內容
+            # Prepare HTML content
             content = f'<h1>{title}</h1>\n'
-            content += f'<p>作者：{author}</p>\n' if author else ''
-            content += f'<p>編輯日期：{edit_date}</p>\n' if edit_date else ''
-            content += f'<p>來源：<a href="{url}">{url}</a></p>\n'
+            content += f'<p>Author: {author}</p>\n' if author else ''
+            content += f'<p>Edit date: {edit_date}</p>\n' if edit_date else ''
+            content += f'<p>Source: <a href="{url}">{url}</a></p>\n'
             content += '<hr/>\n'
             
-            # 添加文本內容
+            # Add text content
             paragraphs = text.split('\n')
             for p in paragraphs:
                 if p.strip():
                     content += f'<p>{p}</p>\n'
             
-            # 添加圖片
+            # Add images
             for idx, img_info in enumerate(image_info):
                 try:
                     if img_info['size_kb'] <= 1:
                         continue
                     
-                    # 複製圖片到臨時目錄
+                    # Copy image to temporary directory
                     img_filename = f'image_{idx+1}.jpg'
                     img = epub.EpubImage()
                     img.file_name = f'images/{img_filename}'
@@ -381,120 +381,120 @@ class EPUBConverter:
                         img.content = f.read()
                     
                     book.add_item(img)
-                    content += f'<p><img src="images/{img_filename}" alt="圖片 {idx+1}"/></p>\n'
+                    content += f'<p><img src="images/{img_filename}" alt="Image {idx+1}"/></p>\n'
                     
                 except Exception as e:
-                    print(f"處理EPUB圖片時發生錯誤 {img_info['path']}: {e}")
+                    print(f"Error occurred while processing EPUB image {img_info['path']}: {e}")
                     continue
             
             chapter.content = content
             book.add_item(chapter)
             
-            # 添加導航
+            # Add navigation
             book.add_item(epub.EpubNcx())
             book.add_item(epub.EpubNav())
             
-            # 定義閱讀順序
+            # Define reading order
             book.spine = ['nav', chapter]
             
-            # 生成EPUB
+            # Generate EPUB
             epub.write_epub(output_path, book, {})
-            print(f"EPUB已生成：{output_path}")
+            print(f"EPUB generated: {output_path}")
             return output_path
             
         except Exception as e:
-            print(f"生成EPUB時發生錯誤: {e}")
+            print(f"Error occurred while generating EPUB: {e}")
             return None
 
 class MarkdownConverter:
-    """Markdown轉換器，負責將內容轉換為Markdown格式"""
+    """Markdown converter, responsible for converting content to Markdown format"""
     
     def create_markdown(self, text, image_info, note_id, title, url, author, edit_date, output_folder='markdowns'):
         """
-        創建Markdown文件。
+        Create Markdown file.
         
         Args:
-            text (str): 文章文本內容
-            image_info (list): 圖片信息列表
-            note_id (str): 文章ID
-            title (str): 文章標題
-            url (str): 文章URL
-            author (str): 作者
-            edit_date (str): 編輯日期
-            output_folder (str): Markdown輸出目錄
+            text (str): Article text content
+            image_info (list): List of image information
+            note_id (str): Article ID
+            title (str): Article title
+            url (str): Article URL
+            author (str): Author
+            edit_date (str): Edit date
+            output_folder (str): Markdown output directory
             
         Returns:
-            str or None: Markdown文件路徑，如果創建失敗則返回None
+            str or None: Markdown file path, returns None if creation fails
         """
         try:
             if not os.path.exists(output_folder):
                 os.makedirs(output_folder)
             
-            # 生成時間戳記格式的資料夾名稱
+            # Generate timestamp-based folder name
             timestamp = datetime.now().strftime('%m%d_%H_%M_%S')
             
             safe_title = sanitize_filename(title)
             filename = f"{safe_title}.md" if safe_title else f"{note_id}.md"
             output_path = os.path.join(output_folder, filename)
             
-            # 創建圖片目錄，使用時間戳記
+            # Create image directory, using timestamp
             images_dir = os.path.join(output_folder, 'images', timestamp)
             if not os.path.exists(images_dir):
                 os.makedirs(images_dir)
             
-            # 生成Markdown內容
+            # Generate Markdown content
             content = f"# {title}\n\n"
-            content += f"作者：{author}\n\n" if author else ""
-            content += f"編輯日期：{edit_date}\n\n" if edit_date else ""
-            content += f"來源：[{url}]({url})\n\n"
+            content += f"Author: {author}\n\n" if author else ""
+            content += f"Edit date: {edit_date}\n\n" if edit_date else ""
+            content += f"Source: [{url}]({url})\n\n"
             content += "---\n\n"
             
-            # 添加文本內容
+            # Add text content
             content += text.strip() + "\n\n"
             
-            # 複製並添加圖片
+            # Copy and add images
             for idx, img_info in enumerate(image_info):
                 try:
                     if img_info['size_kb'] <= 1:
                         continue
                     
-                    # 複製圖片，使用原始檔名但加上序號
+                    # Copy image, using original filename but adding index
                     original_filename = os.path.basename(img_info['path'])
                     img_filename = f'{idx+1:02d}_{original_filename}'
                     img_path = os.path.join(images_dir, img_filename)
                     shutil.copy2(img_info['path'], img_path)
                     
-                    # 添加圖片引用，使用相對路徑
+                    # Add image reference, using relative path
                     relative_path = os.path.join('images', timestamp, img_filename).replace('\\', '/')
-                    content += f"\n![圖片 {idx+1}]({relative_path})\n"
+                    content += f"\n![Image {idx+1}]({relative_path})\n"
                     
                 except Exception as e:
-                    print(f"處理Markdown圖片時發生錯誤 {img_info['path']}: {e}")
+                    print(f"Error occurred while processing Markdown image {img_info['path']}: {e}")
                     continue
             
-            # 保存Markdown文件
+            # Save Markdown file
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(content)
             
-            print(f"Markdown已生成：{output_path}")
-            print(f"圖片已保存至：{images_dir}")
+            print(f"Markdown generated: {output_path}")
+            print(f"Images saved to: {images_dir}")
             return output_path
             
         except Exception as e:
-            print(f"生成Markdown時發生錯誤: {e}")
+            print(f"Error occurred while generating Markdown: {e}")
             return None
 
 def create_pdf(text, image_info, note_id, title, url, author, edit_date, output_folder='pdfs'):
-    """創建PDF文件的便捷函數"""
+    """Convenient function to create PDF file"""
     converter = PDFConverter()
     return converter.create_pdf(text, image_info, note_id, title, url, author, edit_date, output_folder)
 
 def create_epub(text, image_info, note_id, title, url, author, edit_date, output_folder='epubs'):
-    """創建EPUB文件的便捷函數"""
+    """Convenient function to create EPUB file"""
     converter = EPUBConverter()
     return converter.create_epub(text, image_info, note_id, title, url, author, edit_date, output_folder)
 
 def create_markdown(text, image_info, note_id, title, url, author, edit_date, output_folder='markdowns'):
-    """創建Markdown文件的便捷函數"""
+    """Convenient function to create Markdown file"""
     converter = MarkdownConverter()
     return converter.create_markdown(text, image_info, note_id, title, url, author, edit_date, output_folder) 
