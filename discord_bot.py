@@ -4,6 +4,7 @@ from discord.ext import commands
 from dotenv import load_dotenv, find_dotenv
 import asyncio
 from xiaohongshu_crawler.main import process_url
+from xiaohongshu_crawler.image_handler import download_images
 import tempfile
 import shutil
 import re
@@ -128,10 +129,16 @@ async def on_message(message):
     if not url:
         return
     
+    # 確保所有必要的資料夾存在
+    os.makedirs('pdfs', exist_ok=True)
+    os.makedirs('epubs', exist_ok=True)
+    os.makedirs('markdowns', exist_ok=True)
+    os.makedirs('markdowns/images', exist_ok=True)  # 添加圖片資料夾
+    
     try:
         logger.info(f"Processing URL: {url} from user: {message.author}")
-        # 發送處理消息
-        await message.channel.send(f"檢測到小紅書連結: {url}\n開始處理...")
+        # 添加處理中的表情符號
+        await message.add_reaction('🔄')
         
         # 創建臨時目錄
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -149,9 +156,13 @@ async def on_message(message):
             
             if not result:
                 logger.error(f"Failed to process URL: {url}")
+                await message.add_reaction('❌')
                 await message.channel.send("處理文章時發生錯誤，未能生成任何文件。")
                 return
             
+            # 追蹤上傳失敗的格式
+            failed_formats = []
+            # FIXME: 現在透過 discord 爬蟲時，markdown 的圖片不會被存到 markdowns/images/ ，所以 md 沒有圖片；但是透過 note-urls.md 可以正確存圖片
             # 檢查每個格式的文件
             for format_type, file_path in result.items():
                 if file_path and os.path.exists(file_path):
@@ -160,28 +171,74 @@ async def on_message(message):
                         file_size = os.path.getsize(file_path)
                         logger.info(f"{format_type.upper()} file size: {file_size} bytes")
                         
+                        # 確定目標資料夾和檔案名稱
+                        target_dir = {
+                            'pdf': 'pdfs',
+                            'epub': 'epubs',
+                            'markdown': 'markdowns'
+                        }.get(format_type)
+                        
+                        if target_dir:
+                            filename = os.path.basename(file_path)
+                            target_path = os.path.join(target_dir, filename)
+                            
+                            # 複製主要檔案到目標資料夾
+                            shutil.copy2(file_path, target_path)
+                            logger.info(f"File saved to: {target_path}")
+                            
+                            # 如果是 markdown 格式，處理相關的圖片
+                            if format_type == 'markdown':
+                                note_id = os.path.splitext(filename)[0]
+                                # 檢查臨時目錄中的圖片資料夾
+                                temp_images_dir = os.path.join(temp_dir, 'markdowns/images', note_id)
+                                if os.path.exists(temp_images_dir):
+                                    # 創建目標圖片資料夾
+                                    target_images_dir = os.path.join('markdowns/images', note_id)
+                                    if os.path.exists(target_images_dir):
+                                        shutil.rmtree(target_images_dir)  # 如果已存在，先刪除
+                                    # 複製整個圖片資料夾
+                                    shutil.copytree(temp_images_dir, target_images_dir)
+                                    logger.info(f"Images copied to: {target_images_dir}")
+                        
                         if file_size > 8 * 1024 * 1024:  # 8MB limit
                             logger.warning(f"{format_type.upper()} file too large: {file_size} bytes")
                             await message.channel.send(f"{format_type.upper()} 文件太大 ({file_size/1024/1024:.2f}MB)，超過 Discord 8MB 限制。")
+                            failed_formats.append(format_type)
                             continue
                         
                         # 發送文件
-                        await message.channel.send(f"正在上傳 {format_type.upper()} 文件...")
                         await message.channel.send(file=discord.File(file_path))
                         logger.info(f"{format_type.upper()} file sent successfully")
                     except Exception as e:
                         error_msg = f"發送 {format_type.upper()} 文件時發生錯誤: {str(e)}"
                         logger.error(error_msg)
                         await message.channel.send(error_msg)
+                        failed_formats.append(format_type)
                 else:
                     logger.error(f"File not found: {file_path}")
                     await message.channel.send(f"未能生成 {format_type.upper()} 文件。")
+                    failed_formats.append(format_type)
+            
+            # 添加結果表情符號
+            if failed_formats:
+                await message.add_reaction('❌')
+                # 為每個失敗的格式添加對應的表情符號
+                for format_type in failed_formats:
+                    if format_type == 'pdf':
+                        await message.add_reaction('1️⃣')
+                    elif format_type == 'epub':
+                        await message.add_reaction('2️⃣')
+                    elif format_type == 'markdown':
+                        await message.add_reaction('3️⃣')
+            else:
+                await message.add_reaction('✅')
             
             await message.channel.send("處理完成！")
         
     except Exception as e:
         error_message = f"處理過程中發生錯誤：{str(e)}"
         logger.error(error_message, exc_info=True)
+        await message.add_reaction('❌')
         await message.channel.send(error_message)
 
 @bot.event
