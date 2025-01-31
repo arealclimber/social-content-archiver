@@ -430,12 +430,15 @@ class MarkdownConverter:
             if not os.path.exists(output_folder):
                 os.makedirs(output_folder)
             
+            # 生成時間戳記格式的資料夾名稱
+            timestamp = datetime.now().strftime('%m%d_%H_%M_%S')
+            
             safe_title = sanitize_filename(title)
             filename = f"{safe_title}.md" if safe_title else f"{note_id}.md"
             output_path = os.path.join(output_folder, filename)
             
-            # 創建圖片目錄
-            images_dir = os.path.join(output_folder, 'images', safe_title)
+            # 創建圖片目錄，使用時間戳記
+            images_dir = os.path.join(output_folder, 'images', timestamp)
             if not os.path.exists(images_dir):
                 os.makedirs(images_dir)
             
@@ -455,13 +458,14 @@ class MarkdownConverter:
                     if img_info['size_kb'] <= 1:
                         continue
                     
-                    # 複製圖片
-                    img_filename = f'image_{idx+1}.jpg'
+                    # 複製圖片，使用原始檔名但加上序號
+                    original_filename = os.path.basename(img_info['path'])
+                    img_filename = f'{idx+1:02d}_{original_filename}'
                     img_path = os.path.join(images_dir, img_filename)
                     shutil.copy2(img_info['path'], img_path)
                     
-                    # 添加圖片引用
-                    relative_path = os.path.join('images', safe_title, img_filename)
+                    # 添加圖片引用，使用相對路徑
+                    relative_path = os.path.join('images', timestamp, img_filename).replace('\\', '/')
                     content += f"\n![圖片 {idx+1}]({relative_path})\n"
                     
                 except Exception as e:
@@ -473,6 +477,7 @@ class MarkdownConverter:
                 f.write(content)
             
             print(f"Markdown已生成：{output_path}")
+            print(f"圖片已保存至：{images_dir}")
             return output_path
             
         except Exception as e:
