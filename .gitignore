@@ -19,6 +19,7 @@ author_link_archive/
 
 # 錯誤日誌
 error.txt
+logs/
 
 # 系統文件
 .DS_Store
