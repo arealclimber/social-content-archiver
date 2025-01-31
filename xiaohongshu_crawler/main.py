@@ -10,19 +10,20 @@ from .image_handler import download_images
 from .file_converter import create_pdf, create_epub, create_markdown
 from .utils import extract_note_id
 
-def process_url(url, formats=None):
+def process_url(url, output_dir=None, formats=None):
     """
     Process a single URL, completing the entire workflow from crawling to file generation.
     
     Args:
         url (str): Article URL
+        output_dir (str): Directory to save output files
         formats (list): List of file formats to generate, possible values: ['pdf', 'epub', 'markdown']
         
     Returns:
         dict: Dictionary containing file paths for each format, None for formats that failed to process
     """
     if formats is None:
-        formats = ['pdf']  # Default to PDF only
+        formats = ['pdf', 'epub', 'markdown']  # 生成所有格式
     
     note_id = extract_note_id(url)
     print(f"Processing note ID: {note_id}")
@@ -33,11 +34,11 @@ def process_url(url, formats=None):
         return {fmt: None for fmt in formats}
     
     text, image_urls, title, author, edit_date = parse_content(html, note_id)
-    if not image_urls:
-        print(f"No images found: {url}")
+    if not text:
+        print(f"No content found: {url}")
         return {fmt: None for fmt in formats}
     
-    image_info = download_images(image_urls, note_id, title)
+    image_info = download_images(image_urls, note_id, title, output_dir)
     if not image_info:
         print(f"No images successfully downloaded: {url}")
         return {fmt: None for fmt in formats}
@@ -46,16 +47,19 @@ def process_url(url, formats=None):
     
     # Generate files in different formats
     if 'pdf' in formats:
-        pdf_path = create_pdf(text, image_info, note_id, title, url, author, edit_date)
+        pdf_path = create_pdf(text, image_info, note_id, title, url, author, edit_date, output_dir)
         results['pdf'] = pdf_path
-        
+        print(f"PDF created at: {pdf_path}")
+    
     if 'epub' in formats:
-        epub_path = create_epub(text, image_info, note_id, title, url, author, edit_date)
+        epub_path = create_epub(text, image_info, note_id, title, url, author, edit_date, output_dir)
         results['epub'] = epub_path
-        
+        print(f"EPUB created at: {epub_path}")
+    
     if 'markdown' in formats:
-        md_path = create_markdown(text, image_info, note_id, title, url, author, edit_date)
-        results['markdown'] = md_path
+        markdown_path = create_markdown(text, image_info, note_id, title, url, author, edit_date, output_dir)
+        results['markdown'] = markdown_path
+        print(f"Markdown created at: {markdown_path}")
     
     return results
 
