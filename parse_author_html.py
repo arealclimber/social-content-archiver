@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 import json
 import os
+import re
 from pathlib import Path
 
 def normalize_url(url):
@@ -20,10 +21,53 @@ def parse_html_links(html_content, filename):
     author_name = ""
     og_title = soup.find('meta', attrs={'name': 'og:title'})
     if og_title and og_title.get('content'):
-        author_name = og_title.get('content').replace(' - Xiaohongshu', '')
+        author_name = og_title.get('content').replace(' - Xiaohongshu', '').replace(' - 小红书', '')
     
-    # Find all 'a' tags with class 'cover ld mask'
-    links = soup.find_all('a', class_='cover ld mask')
+    # Extract user profile base URL from og:url meta tag
+    user_profile_base = ""
+    og_url = soup.find('meta', attrs={'name': 'og:url'})
+    if og_url and og_url.get('content'):
+        user_profile_base = og_url.get('content')
+    
+    # Target user profile base
+    target_profile = "https://www.xiaohongshu.com/user/profile/60f05b47000000000100858d"
+    
+    # Find all links that match the article pattern
+    all_links = soup.find_all('a', href=True)
+    article_links = []
+    
+    for link in all_links:
+        href = link.get('href')
+        if href:
+            # Normalize the URL to full format
+            if href.startswith('/'):
+                full_url = f'https://www.xiaohongshu.com{href}'
+            elif href.startswith('https://'):
+                full_url = href
+            else:
+                full_url = f'https://www.xiaohongshu.com/{href}'
+            
+            # Check if it starts with the target profile and has a note_id
+            if full_url.startswith(target_profile + '/'):
+                # Extract the part after the profile URL
+                remaining_part = full_url[len(target_profile + '/'):]
+                # Check if it contains a note_id (hex string of at least 16 characters)
+                note_id_match = re.match(r'^([0-9a-f]{16,})', remaining_part)
+                if note_id_match:
+                    article_links.append(full_url)
+    
+    # Remove duplicates while preserving order
+    unique_links = []
+    seen = set()
+    for link in article_links:
+        # Extract the note_id part (after the user_id) for comparison
+        # Pattern: /user/profile/{user_id}/{note_id}?...
+        note_id_match = re.search(r'/user/profile/[0-9a-f]+/([0-9a-f]{16,})', link)
+        if note_id_match:
+            note_id = note_id_match.group(1)
+            if note_id not in seen:
+                unique_links.append(link)
+                seen.add(note_id)
     
     # Find all 'a' tags with class 'title' and extract span text
     titles = []
@@ -33,14 +77,12 @@ def parse_html_links(html_content, filename):
         if span and span.text:
             titles.append(span.text.strip())
     
-    # Extract all hrefs and normalize URLs
-    hrefs = [normalize_url(link.get('href')) for link in links if link.get('href')]
-    
     return {
         "filename": filename,
         "author_name": author_name,
-        "links": hrefs,
-        "links_count": len(hrefs),
+        "user_profile_base": user_profile_base,
+        "links": unique_links,
+        "links_count": len(unique_links),
         "titles": titles,
         "titles_count": len(titles)
     }
@@ -56,6 +98,7 @@ def process_html_files():
     
     results = []
     all_links = []  # Collect all links
+    all_note_ids = set()  # Track all unique note IDs globally
     
     # Process all HTML files in the folder
     for html_file in html_dir.glob("*.html"):
@@ -64,8 +107,18 @@ def process_html_files():
                 html_content = f.read()
                 result = parse_html_links(html_content, html_file.name)
                 results.append(result)
-                all_links.extend(result['links'])  # Add links from this file to total list
+                
+                # Add unique links to global list
+                for link in result['links']:
+                    note_id_match = re.search(r'/user/profile/[0-9a-f]+/([0-9a-f]{16,})', link)
+                    if note_id_match:
+                        note_id = note_id_match.group(1)
+                        if note_id not in all_note_ids:
+                            all_links.append(link)
+                            all_note_ids.add(note_id)
+                
                 print(f"Processed file: {html_file.name}")
+                print(f"  Found {result['links_count']} unique article links in this file")
         except Exception as e:
             print(f"Error processing file {html_file.name}: {str(e)}")
     
@@ -84,7 +137,7 @@ def process_html_files():
     print(f"JSON results written to {output_file}")
     print(f"Markdown link list written to {markdown_file}")
     print(f"Processed {len(results)} files")
-    print(f"Collected {len(all_links)} links")
+    print(f"Collected {len(all_links)} unique article links globally")
 
 # Test HTML fragment
 test_html = '''
