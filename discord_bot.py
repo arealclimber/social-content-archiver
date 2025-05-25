@@ -206,9 +206,10 @@ async def on_message(message):
                             failed_formats.append(format_type)
                             continue
                         
-                        # 發送文件
-                        await message.channel.send(file=discord.File(file_path))
-                        logger.info(f"{format_type.upper()} file sent successfully")
+                        # 發送文件，使用原始檔名
+                        original_filename = os.path.basename(file_path)
+                        await message.channel.send(file=discord.File(file_path, filename=original_filename))
+                        logger.info(f"{format_type.upper()} file sent successfully with filename: {original_filename}")
                     except Exception as e:
                         error_msg = f"發送 {format_type.upper()} 文件時發生錯誤: {str(e)}"
                         logger.error(error_msg)

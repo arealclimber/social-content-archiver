@@ -47,17 +47,20 @@ def process_url(url, output_dir=None, formats=None):
     
     # Generate files in different formats
     if 'pdf' in formats:
-        pdf_path = create_pdf(text, image_info, note_id, title, url, author, edit_date, output_dir)
+        pdf_path = create_pdf(text, image_info, note_id, title, url, author, edit_date, 
+                             output_dir if output_dir else 'pdfs')
         results['pdf'] = pdf_path
         print(f"PDF created at: {pdf_path}")
     
     if 'epub' in formats:
-        epub_path = create_epub(text, image_info, note_id, title, url, author, edit_date, output_dir)
+        epub_path = create_epub(text, image_info, note_id, title, url, author, edit_date, 
+                               output_dir if output_dir else 'epubs')
         results['epub'] = epub_path
         print(f"EPUB created at: {epub_path}")
     
     if 'markdown' in formats:
-        markdown_path = create_markdown(text, image_info, note_id, title, url, author, edit_date, output_dir)
+        markdown_path = create_markdown(text, image_info, note_id, title, url, author, edit_date, 
+                                       output_dir if output_dir else 'markdowns')
         results['markdown'] = markdown_path
         print(f"Markdown created at: {markdown_path}")
     
@@ -83,7 +86,7 @@ def process_author(author_url, formats=None):
     
     for idx, url in enumerate(urls, 1):
         print(f"\nProcessing note {idx}/{len(urls)}: {url}")
-        results = process_url(url, formats)
+        results = process_url(url, None, formats)
         
         for fmt in formats:
             if results[fmt]:
@@ -121,7 +124,7 @@ def main():
     
     for url in urls:
         print(f"\nStarting to process URL: {url}")
-        results = process_url(url, args.formats)
+        results = process_url(url, None, args.formats)
         
         for fmt in args.formats:
             if results[fmt]:
