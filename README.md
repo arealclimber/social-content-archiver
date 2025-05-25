@@ -6,7 +6,7 @@ A comprehensive tool for crawling and converting content from social media platf
 
 - **Multi-Platform Support**: Currently supports Xiaohongshu, with extensible architecture for other platforms
 - **Multiple Output Formats**:
-  - PDF: Suitable for printing and reading
+  - PDF: Suitable for printing and reading )
   - EPUB: Compatible with e-book readers
   - Markdown: Perfect for editing and version control
 - **Batch Processing**: Process individual articles or entire author collections
@@ -21,7 +21,7 @@ A comprehensive tool for crawling and converting content from social media platf
 
 - Python 3.10.12 or higher
 - Chrome browser (for Selenium WebDriver)
-- Discord Bot Token (for Discord integration)
+- Discord Bot Token (optional for Discord integration)
 
 ### Installation
 
@@ -285,13 +285,8 @@ For containerized deployment:
 ### Environment Variables for Production
 
 ```bash
-# Required
+# Required for running the discord bot
 DISCORD_TOKEN=your_discord_bot_token
-
-# Optional
-OPENAI_API_KEY=your_openai_key
-ANTHROPIC_API_KEY=your_anthropic_key
-LOG_LEVEL=INFO
 ```
 
 ## 🔧 Configuration
@@ -317,22 +312,12 @@ Modify output settings in the respective converter classes:
 
 ### Planned Platform Support
 
-- [ ] **Novel Websites**: Qidian, Jinjiang Literature City
-- [ ] **Social Media**: Weibo, Instagram, Twitter
-- [ ] **Video Platforms**: Bilibili, YouTube (transcript)
-- [ ] **Blog Platforms**: Medium, WordPress
+- [ ] **Social Media**: Weibo, Twitter
 
 ### Planned Features
 
-- [ ] **Web Interface**: React-based dashboard
-- [ ] **API Endpoints**: RESTful API for integration
-- [ ] **Scheduled Processing**: Cron-based batch jobs
-- [ ] **Content Search**: Full-text search across archived content
-- [ ] **Export Options**: Additional formats (MOBI, AZW3)
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+- [ ] **Cloud Deployment**: AWS, GCP
+- [ ] **Containerization**: Docker
 
 ### Development Setup
 
@@ -343,7 +328,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+-
 
 ## ⚠️ Disclaimer
 
