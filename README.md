@@ -178,6 +178,36 @@ social-content-archiver/
 └── requirements.txt        # Python dependencies
 ```
 
+## 🔧 Configuration
+
+### Anti-Bot Settings
+
+The crawler includes several anti-detection measures:
+
+- Custom User-Agent strings
+- Random delays between requests
+- Selenium WebDriver with stealth mode
+- Automatic retry mechanisms
+
+### Output Customization
+
+Modify output settings in the respective converter classes:
+
+- PDF: Font selection, page layout, image sizing
+- EPUB: Metadata, chapter structure, styling
+- Markdown: Image organization, relative paths
+
+## 🛣️ Roadmap
+
+### Planned Platform Support
+
+- [ ] **Social Media**: Weibo, Twitter
+
+### Planned Features
+
+- [ ] **Cloud Deployment**: AWS, GCP
+- [ ] **Containerization**: Docker
+
 ## ☁️ Cloud Deployment
 
 ### AWS Deployment
@@ -288,47 +318,6 @@ For containerized deployment:
 # Required for running the discord bot
 DISCORD_TOKEN=your_discord_bot_token
 ```
-
-## 🔧 Configuration
-
-### Anti-Bot Settings
-
-The crawler includes several anti-detection measures:
-
-- Custom User-Agent strings
-- Random delays between requests
-- Selenium WebDriver with stealth mode
-- Automatic retry mechanisms
-
-### Output Customization
-
-Modify output settings in the respective converter classes:
-
-- PDF: Font selection, page layout, image sizing
-- EPUB: Metadata, chapter structure, styling
-- Markdown: Image organization, relative paths
-
-## 🛣️ Roadmap
-
-### Planned Platform Support
-
-- [ ] **Social Media**: Weibo, Twitter
-
-### Planned Features
-
-- [ ] **Cloud Deployment**: AWS, GCP
-- [ ] **Containerization**: Docker
-
-### Development Setup
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes and add tests
-4. Submit a pull request
-
-## 📄 License
-
--
 
 ## ⚠️ Disclaimer
 
