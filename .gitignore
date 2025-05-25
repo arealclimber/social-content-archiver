@@ -17,6 +17,7 @@ backup/
 debug_html/
 author_html_manually/
 author_link_archive/
+collection_html_manually/
 
 # 錯誤日誌
 error.txt
@@ -33,10 +34,12 @@ url-to-be-crawled.md
 normal-url-to-be-crawled.md
 inverted-order-urls-to-be-crawled.md
 note-urls.md
-author_links.md
+author_links.*
 backup-note-urls.md
 sylus-fan-fic-rednote.md
 notes_in_author.md
 
 author_links.json
 notes_in_author.json
+
+notes_in_collection.*

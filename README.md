@@ -10,6 +10,7 @@ A comprehensive tool for crawling and converting content from social media platf
   - EPUB: Compatible with e-book readers
   - Markdown: Perfect for editing and version control
 - **Batch Processing**: Process individual articles or entire author collections
+- **Collection Processing**: Extract articles from Xiaohongshu collection pages
 - **Discord Bot Integration**: Real-time processing through Discord commands
 - **Cloud Deployment Ready**: Supports AWS and GCP deployment
 - **Smart Anti-Bot Handling**: Selenium-based crawling with anti-detection measures
@@ -133,6 +134,25 @@ For processing entire author collections:
    - Copy the content to `note-urls.md`
    - Run the command: `python -m xiaohongshu_crawler`
 
+### Collection Page Processing
+
+For processing Xiaohongshu collection pages (board URLs):
+
+1. **Manual HTML Method** (recommended approach):
+
+   - Navigate to the collection page (e.g., `https://www.xiaohongshu.com/board/collection-id`)
+   - Use chrome plugin [SingleFile](https://chromewebstore.google.com/detail/singlefile/mpiodijhokgodhhofbcjdecpffjipkle?hl=en) to save the collection page HTML to `collection_html_manually/`
+   - Run: `python parse_collection_html.py`
+   - The output will be in the `notes_in_collection.md` file
+   - Copy the content to `note-urls.md`
+   - Run the command: `python -m xiaohongshu_crawler`
+
+2. **What it extracts**:
+   - Collection name and metadata
+   - All article URLs in the format: `https://www.xiaohongshu.com/board/{board_id}/{note_id}`
+   - Removes duplicates and query parameters
+   - Generates both JSON (detailed info) in `notes_in_collection.json` and Markdown (URL list) outputs in `notes_in_collection.md`
+
 ## 🏗️ Project Structure
 
 ```
@@ -148,8 +168,13 @@ social-content-archiver/
 ├── pdfs/                    # PDF output directory
 ├── epubs/                   # EPUB output directory
 ├── markdowns/              # Markdown output directory
+├── author_html_manually/   # Manual author page HTML files
+├── collection_html_manually/ # Manual collection page HTML files
 ├── discord_bot.py          # Discord bot implementation
 ├── parse_author_html.py    # Author page HTML parser
+├── parse_collection_html.py # Collection page HTML parser
+├── notes_in_author.md      # Extracted author article URLs
+├── notes_in_collection.md  # Extracted collection article URLs
 └── requirements.txt        # Python dependencies
 ```
 
