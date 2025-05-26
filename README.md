@@ -6,7 +6,7 @@ A comprehensive tool for crawling and converting content from social media platf
 
 - **Multi-Platform Support**: Currently supports Xiaohongshu, with extensible architecture for other platforms
 - **Multiple Output Formats**:
-  - PDF: Suitable for printing and reading )
+  - PDF: Suitable for printing and reading
   - EPUB: Compatible with e-book readers
   - Markdown: Perfect for editing and version control
 - **Batch Processing**: Process individual articles or entire author collections
