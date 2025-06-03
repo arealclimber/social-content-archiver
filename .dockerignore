@@ -1,0 +1,58 @@
+# Output directories - these should be mounted as volumes
+pdfs/
+epubs/
+markdowns/
+images/
+debug_html/
+logs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.temp
+
+# Archive files
+author_html_manually/
+author_link_archive/
+archive/
+
+# Backup files
+backup-*
+*.bak
+
+# Large data files
+*.zip
+*.tar.gz
+*.rar 

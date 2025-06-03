@@ -18,22 +18,28 @@ class FontManager:
     """Font management class, responsible for handling Chinese font discovery and registration"""
     
     def __init__(self):
+        # Prioritize TTF fonts over OTF fonts (ReportLab doesn't support PostScript outlines)
         self.chinese_fonts = [
-            'Songti.ttc',
-            'STHeiti Light.ttc',
-            'Hiragino Sans GB.ttc',
+            # System TTF fonts (higher priority)
+            'NotoSansCJK-Regular.ttf',
+            'NotoSerifCJK-Regular.ttf', 
+            'wqy-microhei.ttc',
+            'wqy-zenhei.ttc',
             'simsun.ttc',
             'simhei.ttf',
             'msyh.ttf',
             'simkai.ttf',
-            'wqy-microhei.ttc',
-            'wqy-zenhei.ttc',
-            'NotoSansCJK-Regular.ttc',
+            # macOS fonts
+            'Songti.ttc',
+            'STHeiti Light.ttc',
+            'Hiragino Sans GB.ttc',
+            # Fallback OTF fonts (lower priority)
+            'NotoSansCJK-Regular.otf',
             'NotoSansSC-Regular.otf'
         ]
         self.default_fonts = {
-            'noto_sans': 'NotoSansCJK-Regular.otf',
-            'noto_serif': 'NotoSerifCJK-Regular.otf'
+            'noto_sans': 'NotoSansCJK-Regular.ttf',  # Changed to TTF
+            'noto_serif': 'NotoSerifCJK-Regular.ttf'  # Changed to TTF
         }
     
     def find_chinese_font(self):
@@ -48,16 +54,16 @@ class FontManager:
         if not os.path.exists(fonts_dir):
             os.makedirs(fonts_dir)
         
-        # Check and download default fonts
+        # Look for Chinese fonts in system font directory first
+        system_font = self._find_system_font()
+        if system_font:
+            return system_font
+        
+        # Check and download default fonts if no system font found
         for font_type, font_name in self.default_fonts.items():
             font_path = os.path.join(fonts_dir, font_name)
             if not os.path.exists(font_path):
                 self._download_font(font_type, font_name, font_path)
-        
-        # Look for Chinese fonts in system font directory
-        system_font = self._find_system_font()
-        if system_font:
-            return system_font
         
         # If system font not found, use default font
         default_font_path = os.path.join(fonts_dir, self.default_fonts['noto_sans'])
@@ -73,9 +79,10 @@ class FontManager:
         print(f"Downloading default font {font_name}...")
         try:
             if font_type == 'noto_sans':
-                url = 'https://raw.githubusercontent.com/googlefonts/noto-cjk/main/Sans/SubsetOTF/TC/NotoSansTC-Regular.otf'
+                # Use TTF version instead of OTF
+                url = 'https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTC/NotoSansCJK-Regular.ttc'
             else:
-                url = 'https://raw.githubusercontent.com/googlefonts/noto-cjk/main/Serif/SubsetOTF/TC/NotoSerifTC-Regular.otf'
+                url = 'https://github.com/googlefonts/noto-cjk/raw/main/Serif/OTC/NotoSerifCJK-Regular.ttc'
             
             response = requests.get(url)
             with open(font_path, 'wb') as f:
@@ -86,18 +93,30 @@ class FontManager:
     
     def _find_system_font(self):
         """Search for available Chinese fonts in the system"""
-        for font_dir in get_system_fonts_path():
+        # Add Docker/Linux system font paths
+        system_paths = get_system_fonts_path()
+        system_paths.extend([
+            '/usr/share/fonts/truetype',
+            '/usr/share/fonts/truetype/noto',
+            '/usr/share/fonts/opentype/noto'
+        ])
+        
+        for font_dir in system_paths:
             if os.path.exists(font_dir):
                 print(f"Searching font directory: {font_dir}")
-                for font_name in self.chinese_fonts:
-                    font_path = os.path.join(font_dir, font_name)
-                    if os.path.exists(font_path):
-                        try:
-                            test_font = TTFont('TestFont', font_path)
-                            print(f"Found available system font: {font_path}")
-                            return font_path
-                        except:
-                            continue
+                # Search recursively in subdirectories
+                for root, dirs, files in os.walk(font_dir):
+                    for font_name in self.chinese_fonts:
+                        font_path = os.path.join(root, font_name)
+                        if os.path.exists(font_path):
+                            try:
+                                # Test if font can be loaded
+                                test_font = TTFont('TestFont', font_path)
+                                print(f"Found available system font: {font_path}")
+                                return font_path
+                            except Exception as e:
+                                print(f"Font test failed for {font_path}: {e}")
+                                continue
         return None
 
 class PDFConverter:

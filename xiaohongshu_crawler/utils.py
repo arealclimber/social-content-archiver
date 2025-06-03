@@ -9,21 +9,38 @@ from pathlib import Path
 
 def sanitize_filename(filename):
     """
-    Clean filename by removing illegal characters.
+    Clean filename by removing illegal characters and limiting length.
     
     Args:
         filename (str): Original filename
         
     Returns:
-        str: Cleaned filename, not exceeding 100 characters
+        str: Cleaned filename, not exceeding 50 characters for better compatibility
     """
-    punctuation = '<>:"/\\|?*.,!，。！？、；：""''（）()[]【】《》〈〉『』「」'
+    if not filename:
+        return ""
+    
+    # Remove or replace problematic characters
+    punctuation = '<>:"/\\|?*.,!，。！？、；：""''（）()[]【】《》〈〉『』「」#'
     for char in punctuation:
         filename = filename.replace(char, '-')
+    
+    # Remove multiple consecutive dashes
     while '--' in filename:
         filename = filename.replace('--', '-')
-    filename = filename.strip('-')
-    return filename[:100]
+    
+    # Remove leading/trailing dashes and spaces
+    filename = filename.strip('- ')
+    
+    # Limit length to 50 characters for better Docker compatibility
+    if len(filename) > 50:
+        filename = filename[:47] + "..."
+    
+    # Ensure filename is not empty
+    if not filename:
+        filename = "untitled"
+    
+    return filename
 
 def extract_note_id(url):
     """

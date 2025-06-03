@@ -1,0 +1,43 @@
+services:
+  social-content-archiver:
+    build: .
+    container_name: social-content-archiver
+    restart: unless-stopped
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      # Persist output files
+      - ./pdfs:/app/pdfs
+      - ./epubs:/app/epubs
+      - ./markdowns:/app/markdowns
+      - ./logs:/app/logs
+      # Mount fonts directory
+      - ./fonts:/app/fonts
+      # Mount debug output
+      - ./debug_html:/app/debug_html
+      # Mount input files
+      - ./note-urls.md:/app/note-urls.md:ro
+    # Uncomment if you want to expose a web interface in the future
+    # ports:
+    #   - "8080:8080"
+
+    # Simple health check - just check if Python process is running
+    healthcheck:
+      test: ["CMD", "python", "-c", "print('healthy')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.0"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
